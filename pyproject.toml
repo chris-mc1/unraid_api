@@ -1,0 +1,37 @@
+[project]
+version = "1.0.0"
+name = "unraid_hass"
+authors = [{ name = "chris-mc1" }]
+description = "Unraid integration for Homeassistant"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["aiohttp>=3.11.13"]
+[project.urls]
+Homepage = "https://github.com/chris-mc1/unraid_hass"
+Issues = "https://github.com/chris-mc1/unraid_hass/issues"
+
+[dependency-groups]
+dev = [
+    "colorlog",
+    "homeassistant==2025.3.1",
+    "pytest-homeassistant-custom-component",
+    "voluptuous-stubs==0.1.1",
+    "ruff>=0.9",
+]
+test = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-aiohttp>=1.0.5",
+    "coverage>=7.6.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["if TYPE_CHECKING:"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

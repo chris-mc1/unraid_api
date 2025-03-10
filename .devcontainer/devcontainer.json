@@ -1,0 +1,47 @@
+{
+    "name": "unraid_hass",
+    "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "postCreateCommand": [
+        "script/setup.sh"
+    ],
+    "forwardPorts": [
+        8123
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "eamodio.gitlens",
+                "charliermarsh.ruff",
+                "ryanluker.vscode-coverage-gutters",
+                "tamasfe.even-better-toml",
+                "DavidAnson.vscode-markdownlint",
+                "redhat.vscode-yaml"
+            ],
+            "settings": {
+                "files.eol": "\n",
+                "editor.tabSize": 4,
+                "editor.formatOnPaste": true,
+                "editor.formatOnSave": true,
+                "editor.formatOnType": false,
+                "files.trimTrailingWhitespace": true,
+                "editor.defaultFormatter": "charliermarsh.ruff",
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                },
+                "[json]": {
+                    "editor.defaultFormatter": "vscode.json-language-features"
+                },
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestEnabled": true,
+                "python.testing.pytestArgs": [
+                    "tests"
+                ]
+            }
+        }
+    },
+    "remoteUser": "root",
+    "runArgs": [
+        "--memory=4g"
+    ]
+}

@@ -1,0 +1,26 @@
+# The contents of this file is based on https://github.com/home-assistant/core/blob/dev/pyproject.toml
+
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = ["ALL"]
+
+
+ignore = [
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "D102",   # undocumented-public-method
+    "D105",   # undocumented-magic-method
+    "D107",   # Missing docstring in __init__
+    "D203",   # no-blank-line-before-class (incompatible with formatter)
+    "D212",   # multi-line-summary-first-line (incompatible with formatter)
+    "COM812", # incompatible with formatter
+    "ISC001", # incompatible with formatter
+    "ARG002", # unused-method-argument
+]
+
+[lint.flake8-pytest-style]
+fixture-parentheses = false
+
+[lint.mccabe]
+max-complexity = 25
