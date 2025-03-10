@@ -1,0 +1,23 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.13"
+      - run: |
+          pip install uv
+          uv sync --no-install-project --prerelease=allow
+      - run: |
+          uv run ruff format --check custom_components/
+          uv run ruff format --check tests/
+      - run: |
+          uv run ruff check custom_components/
+          uv run ruff check tests/

@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ha-version:
+          [
+            "homeassistant==2024.12",
+            "homeassistant==2025.1",
+            "homeassistant==2025.2",
+            "homeassistant==2025.3",
+          ]
+        experimental: [false]
+        include:
+          - ha-version: "homeassistant"
+            experimental: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.13"
+      - run: |
+          sudo pip install uv
+          sudo uv sync --no-install-project --prerelease=allow --no-dev --group test
+          sudo uv pip install --prerelease=allow homeassistant>=${{ matrix.ha-version }} pytest-homeassistant-custom-component
+      - run: |
+          sudo uv run pytest tests/
