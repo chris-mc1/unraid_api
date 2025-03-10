@@ -1,0 +1,10 @@
+# This extend our general Ruff rules specifically for tests
+extend = "../ruff.toml"
+
+[lint]
+
+extend-ignore = [
+    "SLF001",  # private-member-access
+    "S101",    # assert
+    "PLR2004", # magic-value-comparison
+]
