@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .const import QUERY
+from .models import QueryResponse
+
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
@@ -40,5 +43,6 @@ class UnraidApiClient:
             raise UnraidGraphQLError(", ".join(entry.get("message") for entry in result["errors"]))
         return result["data"]
 
-    async def close(self) -> None:
-        await self.session.close()
+    async def query(self) -> QueryResponse:
+        response = await self.call_api(QUERY)
+        return QueryResponse.model_validate(response)
