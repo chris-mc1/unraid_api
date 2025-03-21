@@ -64,27 +64,25 @@ def calc_ram_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> State
 
 SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     UnraidSensorEntityDescription(
-        key="state",
-        name="State",
+        key="array_state",
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.data["data"].array.state.value,
+        value_fn=lambda coordinator: coordinator.data["data"].array.state.value.lower(),
         options=[
-            "STARTED",
-            "STOPPED",
-            "NEW_ARRAY",
-            "RECON_DISK",
-            "DISABLE_DISK",
-            "SWAP_DSBL",
-            "INVALID_EXPANSION",
-            "PARITY_NOT_BIGGEST",
-            "TOO_MANY_MISSING_DISKS",
-            "NEW_DISK_TOO_SMALL",
-            "NO_DATA_DISKS",
+            "started",
+            "stopped",
+            "new_array",
+            "recon_disk",
+            "disable_disk",
+            "swap_dsbl",
+            "invalid_expansion",
+            "parity_not_biggest",
+            "too_many_missing_disks",
+            "new_disk_too_small",
+            "no_data_disks",
         ],
     ),
     UnraidSensorEntityDescription(
         key="array_usage",
-        name="Array usage",
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=2,
         value_fn=calc_array_usage_percentage,
@@ -96,7 +94,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     ),
     UnraidSensorEntityDescription(
         key="array_free",
-        name="Array free space",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -106,7 +103,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     ),
     UnraidSensorEntityDescription(
         key="array_used",
-        name="Array used space",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -116,7 +112,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     ),
     UnraidSensorEntityDescription(
         key="ram_usage",
-        name="RAM usage",
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=2,
         value_fn=calc_ram_usage_percentage,
@@ -128,7 +123,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     ),
     UnraidSensorEntityDescription(
         key="ram_used",
-        name="RAM used",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -138,7 +132,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     ),
     UnraidSensorEntityDescription(
         key="ram_free",
-        name="RAM free",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -151,25 +144,23 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
 DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
     UnraidDiskSensorEntityDescription(
         key="disk_status",
-        name="Status",
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda disk: disk.status.value,
+        value_fn=lambda disk: disk.status.value.lower(),
         options=[
-            "DISK_NP",
-            "DISK_OK",
-            "DISK_NP_MISSING",
-            "DISK_INVALID",
-            "DISK_WRONG",
-            "DISK_DSBL",
-            "DISK_NP_DSBL",
-            "DISK_DSBL_NEW",
-            "DISK_NEW",
+            "disk_np",
+            "disk_ok",
+            "disk_np_missing",
+            "disk_invalid",
+            "disk_wrong",
+            "disk_dsbl",
+            "disk_np_dsbl",
+            "disk_dsbl_new",
+            "disk_new",
         ],
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     UnraidDiskSensorEntityDescription(
         key="disk_temp",
-        name="Temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda disk: disk.temp,
@@ -256,6 +247,7 @@ class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity)
     """Sensor for Unraid Server."""
 
     entity_description: UnraidSensorEntityDescription
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -265,7 +257,7 @@ class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity)
         super().__init__(config_entry.runtime_data.coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}"
-        self._attr_name = f"{config_entry.title} {description.name}"
+        self._attr_translation_key = description.key
         self._attr_available = False
         self._attr_device_info = config_entry.runtime_data.device_info
 
@@ -284,6 +276,7 @@ class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnt
     """Sensor for Unraid Disks."""
 
     entity_description: UnraidDiskSensorEntityDescription
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -295,8 +288,10 @@ class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnt
         self.disk_id = disk_id
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.disk_id}"
-        disk_name = self.coordinator.data["disks"][self.disk_id].name
-        self._attr_name = f"{config_entry.title} {disk_name} {description.name}"
+        self._attr_translation_key = description.key
+        self._attr_translation_placeholders = {
+            "disk_name": self.coordinator.data["disks"][self.disk_id].name
+        }
         self._attr_available = False
         self._attr_device_info = config_entry.runtime_data.device_info
 
@@ -317,6 +312,7 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
     """Sensor for Unraid Shares."""
 
     entity_description: UnraidShareSensorEntityDescription
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -328,7 +324,8 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         self.share_name = share_name
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.share_name}"
-        self._attr_name = f"{config_entry.title} {self.share_name} {description.name}"
+        self._attr_translation_key = description.key
+        self._attr_translation_placeholders = {"share_name": self.share_name}
         self._attr_available = False
         self._attr_device_info = config_entry.runtime_data.device_info
 

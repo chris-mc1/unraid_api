@@ -1,0 +1,42 @@
+{
+    "entity": {
+        "sensor": {
+            "array_state": {
+                "default": "mdi:database"
+            },
+            "array_usage": {
+                "default": "mdi:database"
+            },
+            "array_free": {
+                "default": "mdi:database"
+            },
+            "array_used": {
+                "default": "mdi:database"
+            },
+            "ram_usage": {
+                "default": "mdi:memory"
+            },
+            "ram_used": {
+                "default": "mdi:memory"
+            },
+            "ram_free": {
+                "default": "mdi:memory"
+            },
+            "disk_status": {
+                "default": "mdi:harddisk"
+            },
+            "disk_temp": {
+                "default": "mdi:harddisk"
+            },
+            "disk_free": {
+                "default": "mdi:harddisk"
+            },
+            "disk_used": {
+                "default": "mdi:harddisk"
+            },
+            "share_free": {
+                "default": "mdi:folder-network"
+            }
+        }
+    }
+}

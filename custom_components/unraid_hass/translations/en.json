@@ -1,0 +1,104 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Add new Unraid Server",
+                "data": {
+                    "host": "Unraid WebUI Url",
+                    "api_key": "API Key",
+                    "verify_ssl": "Verify SSL certificate"
+                }
+            },
+            "options": {
+                "data": {
+                    "shares": "Monitor Shares",
+                    "drives": "Monitor Disks"
+                }
+            },
+            "reauth_key": {
+                "data": {
+                    "api_key": "API Key"
+                }
+            },
+            "reconfigure": {
+                "data": {
+                    "shares": "Monitor Shares",
+                    "drives": "Monitor Disks"
+                }
+            }
+        },
+        "error": {
+            "ssl_error": "SSL Error when connecting to Unraid",
+            "cannot_connect": "Failed to connect to Unraid",
+            "error_response": "Recived an Error response from Unraid: {error_msg}"
+        },
+        "abort": {
+            "reauth_successful": "Re-authentication was successful",
+            "reconfigure_successful": "Re-configuration was successful"
+        }
+    },
+    "entity": {
+        "sensor": {
+            "array_state": {
+                "name": "Array State",
+                "state": {
+                    "started": "Started",
+                    "stopped": "Stopped",
+                    "new_array": "New disks",
+                    "recon_disk": "disk being reconstructed",
+                    "disable_disk": "Disk is disabled",
+                    "swap_dsbl": "Disabled",
+                    "invalid_expansion": "Invalid expansion",
+                    "parity_not_biggest": "Parity not biggest",
+                    "too_many_missing_disks": "Too many missing disks",
+                    "new_disk_too_small": "New disk to small",
+                    "no_data_disks": "No data disks"
+                }
+            },
+            "array_usage": {
+                "name": "Array usage"
+            },
+            "array_free": {
+                "name": "Array Free space"
+            },
+            "array_used": {
+                "name": "Array Used space"
+            },
+            "ram_usage": {
+                "name": "RAM usage"
+            },
+            "ram_used": {
+                "name": "RAM used"
+            },
+            "ram_free": {
+                "name": "RAM free"
+            },
+            "disk_status": {
+                "name": "{disk_name} Status",
+                "state": {
+                    "disk_np": "No disk",
+                    "disk_ok": "Ok",
+                    "disk_np_missing": "Missing",
+                    "disk_invalid": "Invalid",
+                    "disk_wrong": "Wrong disk",
+                    "disk_dsbl": "Disabled",
+                    "disk_np_dsbl": "Disabled, no disk",
+                    "disk_dsbl_new": "Disabled, new disk",
+                    "disk_new": "New disk"
+                }
+            },
+            "disk_temp": {
+                "name": "{disk_name} Temperature"
+            },
+            "disk_free": {
+                "name": "{disk_name} Free space"
+            },
+            "disk_used": {
+                "name": "{disk_name} Used space"
+            },
+            "share_free": {
+                "name": "{share_name} Free space"
+            }
+        }
+    }
+}
