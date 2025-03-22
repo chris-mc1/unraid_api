@@ -96,6 +96,9 @@
             "disk_used": {
                 "name": "{disk_name} Used space"
             },
+            "disk_usage": {
+                "name": "{disk_name} usage"
+            },
             "share_free": {
                 "name": "{share_name} Free space"
             }

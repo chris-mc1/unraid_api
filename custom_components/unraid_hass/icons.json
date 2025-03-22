@@ -34,6 +34,9 @@
             "disk_used": {
                 "default": "mdi:harddisk"
             },
+            "disk_usage": {
+                "default": "mdi:harddisk"
+            },
             "share_free": {
                 "default": "mdi:folder-network"
             }

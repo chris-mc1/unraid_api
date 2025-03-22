@@ -62,6 +62,11 @@ def calc_ram_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> State
     return (used / total) * 100
 
 
+def calc_disk_usage_percentage(disk: Disk) -> StateType:
+    """Calculate the disk usage percentage."""
+    return (disk.fs_used / disk.fs_size) * 100
+
+
 SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     UnraidSensorEntityDescription(
         key="array_state",
@@ -169,22 +174,28 @@ DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
 
 DISK_SENSOR_SPACE_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
     UnraidDiskSensorEntityDescription(
-        key="disk_free",
-        name="free space",
+        key="disk_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=2,
+        value_fn=calc_disk_usage_percentage,
+    ),
+    UnraidDiskSensorEntityDescription(
+        key="disk_used",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
         value_fn=lambda disk: disk.fs_free,
+        entity_registry_enabled_default=False,
     ),
     UnraidDiskSensorEntityDescription(
         key="disk_used",
-        name="used space",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
         value_fn=lambda disk: disk.fs_used,
+        entity_registry_enabled_default=False,
     ),
 )
 
