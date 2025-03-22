@@ -42,7 +42,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             logger=_LOGGER,
             config_entry=config_entry,
             name=DOMAIN,
-            update_interval=timedelta(seconds=10),
+            update_interval=timedelta(minutes=1),
         )
         self.api_client = api_client
         self.disk_callbacks: set[Callable[[Disk], None]] = set()

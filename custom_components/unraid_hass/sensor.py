@@ -180,7 +180,7 @@ DISK_SENSOR_SPACE_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = 
         value_fn=calc_disk_usage_percentage,
     ),
     UnraidDiskSensorEntityDescription(
-        key="disk_used",
+        key="disk_free",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
