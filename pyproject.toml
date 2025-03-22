@@ -1,14 +1,14 @@
 [project]
 version = "1.0.0"
-name = "unraid_hass"
+name = "unraid_api"
 authors = [{ name = "chris-mc1" }]
 description = "Unraid integration for Homeassistant"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = ["aiohttp>=3.11.13"]
 [project.urls]
-Homepage = "https://github.com/chris-mc1/unraid_hass"
-Issues = "https://github.com/chris-mc1/unraid_hass/issues"
+Homepage = "https://github.com/chris-mc1/unraid_api"
+Issues = "https://github.com/chris-mc1/unraid_api/issues"
 
 [dependency-groups]
 dev = [

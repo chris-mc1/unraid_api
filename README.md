@@ -1,6 +1,6 @@
 # Unraid
 
-The **Unraid** integration allows users to integrate their [Unraid](https://www.home-connect.com/global) server using Unraids local GraphQL API.
+The **Unraid API** integration allows users to integrate their [Unraid](https://www.home-connect.com/global) server using Unraids local GraphQL API.
 
 ## Install the Integration
 
@@ -8,7 +8,7 @@ The **Unraid** integration allows users to integrate their [Unraid](https://www.
 
 2. Click the button bellow and click 'Download' to install the Integration:
 
-    [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=unraid_hass&owner=chris-mc1)
+    [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=unraid_api&owner=chris-mc1)
 
 3. Restart Home Assistant.
 
@@ -26,7 +26,7 @@ The **Unraid** integration allows users to integrate their [Unraid](https://www.
 
 1. Click the button below or use "Add Integration" in Home Assistant and select "Unraid".
 
-    [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=unraid_hass)
+    [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=unraid_api)
 
 2. Enter the URL of the Unraid WebUI and your API Key
 3. Select if you want to monitor disk and shares

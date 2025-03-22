@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.unraid_hass.const import CONF_DRIVES, CONF_SHARES
+from custom_components.unraid_api.const import CONF_DRIVES, CONF_SHARES
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 
 MOCK_CONFIG_DATA = {CONF_HOST: "http://1.2.3.4", CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False}

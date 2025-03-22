@@ -14,6 +14,8 @@ jobs:
       matrix:
         ha-version:
           [
+            "homeassistant==2024.10",
+            "homeassistant==2024.11",
             "homeassistant==2024.12",
             "homeassistant==2025.1",
             "homeassistant==2025.2",

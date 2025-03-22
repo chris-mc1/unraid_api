@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
-from custom_components.unraid_hass.const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from custom_components.unraid_api.const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType

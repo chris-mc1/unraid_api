@@ -6,7 +6,7 @@ from typing import Final
 
 from homeassistant.const import Platform
 
-DOMAIN: Final = "unraid_hass"
+DOMAIN: Final = "unraid_api"
 PLATFORMS = [Platform.SENSOR]
 
 CONF_SHARES: Final[str] = "shares"
