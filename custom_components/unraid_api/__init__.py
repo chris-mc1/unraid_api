@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,8 @@ from .coordinator import UnraidDataUpdateCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,6 +39,7 @@ async def async_setup_entry(
     config_entry: UnraidConfigEntry,
 ) -> bool:
     """Set up this integration using config entry."""
+    _LOGGER.debug("Setting up %s", config_entry.data[CONF_HOST])
     api_client = UnraidApiClient(
         host=config_entry.data[CONF_HOST],
         api_key=config_entry.data[CONF_API_KEY],

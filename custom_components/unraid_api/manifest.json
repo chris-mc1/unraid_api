@@ -9,5 +9,8 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/chris-mc1/unraid_api/issues",
+  "loggers": [
+    "custom_components.unraid_api"
+  ],
   "version": "1.0.0"
 }

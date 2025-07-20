@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from .const import QUERY
@@ -9,6 +10,8 @@ from .models import QueryResponse
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class UnraidGraphQLError(Exception):
@@ -40,7 +43,9 @@ class UnraidApiClient:
         )
         result = await response.json()
         if "errors" in result:
-            raise UnraidGraphQLError(", ".join(entry.get("message") for entry in result["errors"]))
+            error_msg = ", ".join(entry.get("message") for entry in result["errors"])
+            _LOGGER.error("Error in query response: %s", error_msg)
+            raise UnraidGraphQLError(error_msg)
         return result["data"]
 
     async def query(self) -> QueryResponse:

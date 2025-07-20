@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
     from homeassistant.helpers.typing import StateType
 
     from . import UnraidConfigEntry
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class UnraidSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
@@ -229,6 +232,7 @@ async def async_setup_entry(
 
     @callback
     def add_disk_callback(disk: Disk) -> None:
+        _LOGGER.debug("Adding new Disk: %s", disk.name)
         entities = [
             UnraidDiskSensor(description, config_entry, disk.id)
             for description in DISK_SENSOR_DESCRIPTIONS
@@ -242,6 +246,7 @@ async def async_setup_entry(
 
     @callback
     def add_share_callback(share: Share) -> None:
+        _LOGGER.debug("Adding new Share: %s", share.name)
         entities = [
             UnraidShareSensor(description, config_entry, share.name)
             for description in SHARE_SENSOR_DESCRIPTIONS
