@@ -20,10 +20,10 @@ class ArrayDiskStatus(StrEnum):  # noqa: D101
 
 
 class ArrayDiskType(StrEnum):  # noqa: D101
-    Data = "Data"
-    Parity = "Parity"
-    Flash = "Flash"
-    Cache = "Cache"
+    DATA = "DATA"
+    Parity = "PARITY"
+    Flash = "FLASH"
+    Cache = "CACHE"
 
 
 class ArrayState(StrEnum):  # noqa: D101

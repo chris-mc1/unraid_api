@@ -20,7 +20,7 @@ API_RESPONSE = {
                     "fsSize": 5999038075,
                     "fsFree": 464583438,
                     "fsUsed": 5534454637,
-                    "type": "Data",
+                    "type": "DATA",
                     "id": "c6b",
                 },
             ],
@@ -32,7 +32,7 @@ API_RESPONSE = {
                     "fsSize": None,
                     "fsFree": None,
                     "fsUsed": None,
-                    "type": "Parity",
+                    "type": "PARITY",
                     "id": "4d5",
                 }
             ],
@@ -44,7 +44,7 @@ API_RESPONSE = {
                     "fsSize": 119949189,
                     "fsFree": 38907683,
                     "fsUsed": 81041506,
-                    "type": "Cache",
+                    "type": "CACHE",
                     "id": "8e0",
                 }
             ],
