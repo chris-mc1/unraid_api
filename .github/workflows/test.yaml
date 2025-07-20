@@ -8,28 +8,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        ha-version:
-          [
-            "homeassistant==2024.10",
-            "homeassistant==2024.11",
-            "homeassistant==2024.12",
-            "homeassistant==2025.1",
-            "homeassistant==2025.2",
-            "homeassistant==2025.3",
-          ]
-        experimental: [false]
-        include:
-          - ha-version: "homeassistant"
-            experimental: true
+        ha-version: ["homeassistant==2024.10", "homeassistant==2025.7"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
         with:
-          python-version: "3.13"
+          python-version: "3.13.2"
       - run: |
           sudo pip install uv
           sudo uv sync --no-install-project --prerelease=allow --no-dev --group test
