@@ -67,6 +67,8 @@ def calc_ram_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> State
 
 def calc_disk_usage_percentage(disk: Disk) -> StateType:
     """Calculate the disk usage percentage."""
+    if disk.fs_used is None or disk.fs_size is None or disk.fs_size == 0:
+        return 0
     return (disk.fs_used / disk.fs_size) * 100
 
 
