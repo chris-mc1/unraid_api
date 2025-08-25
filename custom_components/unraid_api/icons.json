@@ -22,6 +22,9 @@
             "ram_free": {
                 "default": "mdi:memory"
             },
+            "cpu_utilization": {
+                "default": "mdi:chip"
+            },
             "disk_status": {
                 "default": "mdi:harddisk"
             },

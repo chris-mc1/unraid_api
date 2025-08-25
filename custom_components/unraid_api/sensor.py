@@ -140,6 +140,12 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         value_fn=lambda coordinator: coordinator.data["metrics"].memory.free,
         entity_registry_enabled_default=False,
     ),
+    UnraidSensorEntityDescription(
+        key="cpu_utilization",
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: coordinator.data["metrics"].cpu.percent_total,
+    ),
 )
 
 DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (

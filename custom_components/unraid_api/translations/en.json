@@ -73,6 +73,9 @@
             "ram_free": {
                 "name": "RAM free"
             },
+            "cpu_utilization": {
+                "name": "CPU utilization"
+            },
             "disk_status": {
                 "name": "{disk_name} Status",
                 "state": {
