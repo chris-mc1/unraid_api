@@ -7,11 +7,59 @@ from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 
 MOCK_CONFIG_DATA = {CONF_HOST: "http://1.2.3.4", CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False}
 MOCK_OPTION_DATA = {CONF_SHARES: True, CONF_DRIVES: True}
-API_RESPONSE = {
+SERVER_INFO_RESPONSE = {
     "data": {
         "server": {"localurl": "http://1.2.3.4", "name": "Test Server"},
+        "info": {
+            "versions": {
+                "core": {"unraid": "7.0.1"},
+            },
+        },
+    }
+}
+
+METRICS_RESPONSE = {
+    "data": {
+        "metrics": {
+            "memory": {
+                "free": 415510528,
+                "total": 16646950912,
+                "active": 12746354688,
+                "percentTotal": 76.56870471583932,
+            },
+            "cpu": {"percentTotal": 5.1},
+        },
+    }
+}
+
+SHARES_RESPONSE = {
+    "data": {
+        "shares": [
+            {
+                "name": "Share_1",
+                "free": 523094721,
+                "used": 11474981429,
+                "size": 0,
+                "allocator": "highwater",
+                "floor": "20000000",
+                "luksStatus": "2",
+            },
+            {
+                "name": "Share_2",
+                "free": 503491121,
+                "used": 5615496143,
+                "size": 0,
+                "allocator": "highwater",
+                "floor": "0",
+                "luksStatus": "1",
+            },
+        ],
+    }
+}
+
+DISKS_RESPONSE = {
+    "data": {
         "array": {
-            "state": "STARTED",
             "disks": [
                 {
                     "name": "disk1",
@@ -48,33 +96,17 @@ API_RESPONSE = {
                     "id": "8e0",
                 }
             ],
+        },
+    }
+}
+
+ARRAY_RESPONSE = {
+    "data": {
+        "array": {
+            "state": "STARTED",
             "capacity": {
                 "kilobytes": {"free": "523094720", "used": "11474981430", "total": "11998076150"}
             },
-        },
-        "shares": [
-            {
-                "name": "Share_1",
-                "free": 523094721,
-                "used": 11474981429,
-                "size": 0,
-                "allocator": "highwater",
-                "floor": "20000000",
-                "luksStatus": "2",
-            },
-            {
-                "name": "Share_2",
-                "free": 503491121,
-                "used": 5615496143,
-                "size": 0,
-                "allocator": "highwater",
-                "floor": "0",
-                "luksStatus": "1",
-            },
-        ],
-        "info": {
-            "memory": {"free": 415510528, "total": 16646950912, "active": 12746354688},
-            "versions": {"unraid": "7.0.1"},
         },
     }
 }

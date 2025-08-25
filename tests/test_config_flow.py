@@ -12,7 +12,7 @@ from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .const import API_RESPONSE, MOCK_CONFIG_DATA, MOCK_OPTION_DATA
+from .const import MOCK_CONFIG_DATA, MOCK_OPTION_DATA, SERVER_INFO_RESPONSE
 
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
@@ -29,7 +29,7 @@ async def test_user_init(
     """Test config flow."""
     aioclient_mock.post(
         "http://1.2.3.4/graphql",
-        json=API_RESPONSE,
+        json=SERVER_INFO_RESPONSE,
         headers={"Content-Type": "application/json"},
     )
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
@@ -172,7 +172,7 @@ async def test_reauth(
 
     aioclient_mock.post(
         "http://1.2.3.4/graphql",
-        json=API_RESPONSE,
+        json=SERVER_INFO_RESPONSE,
         headers={"Content-Type": "application/json"},
     )
 
