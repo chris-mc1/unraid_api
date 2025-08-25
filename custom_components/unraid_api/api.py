@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .const import QUERY
-from .models import QueryResponse
+from .const import ARRAY_QUERY, DISKS_QUERY, METRICS_QUERY, SERVER_INFO_QUERY, SHARES_QUERY
+from .models import ArrayQuery, DiskQuery, MetricsQuery, ServerInfoQuery, SharesQuery
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -48,6 +48,22 @@ class UnraidApiClient:
             raise UnraidGraphQLError(error_msg)
         return result["data"]
 
-    async def query(self) -> QueryResponse:
-        response = await self.call_api(QUERY)
-        return QueryResponse.model_validate(response)
+    async def query_server_info(self) -> ServerInfoQuery:
+        response = await self.call_api(SERVER_INFO_QUERY)
+        return ServerInfoQuery.model_validate(response)
+
+    async def query_metrics(self) -> MetricsQuery:
+        response = await self.call_api(METRICS_QUERY)
+        return MetricsQuery.model_validate(response)
+
+    async def query_shares(self) -> SharesQuery:
+        response = await self.call_api(SHARES_QUERY)
+        return SharesQuery.model_validate(response)
+
+    async def query_disks(self) -> DiskQuery:
+        response = await self.call_api(DISKS_QUERY)
+        return DiskQuery.model_validate(response)
+
+    async def query_array(self) -> ArrayQuery:
+        response = await self.call_api(ARRAY_QUERY)
+        return ArrayQuery.model_validate(response)

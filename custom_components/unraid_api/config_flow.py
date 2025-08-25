@@ -65,7 +65,7 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             session=async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
         )
         try:
-            response = await api_client.query()
+            response = await api_client.query_server_info()
             self.title = response.server.name
         except ClientConnectorSSLError:
             self.errors = {"base": "ssl_error"}

@@ -45,10 +45,10 @@ async def async_setup_entry(
         api_key=config_entry.data[CONF_API_KEY],
         session=async_get_clientsession(hass, config_entry.data[CONF_VERIFY_SSL]),
     )
-    server_info = await api_client.query()
+    server_info = await api_client.query_server_info()
     device_info = DeviceInfo(
         identifiers={(DOMAIN, config_entry.entry_id)},
-        sw_version=server_info.info.versions.unraid,
+        sw_version=server_info.info.versions.core.unraid,
         name=server_info.server.name,
         configuration_url=server_info.server.localurl,
     )

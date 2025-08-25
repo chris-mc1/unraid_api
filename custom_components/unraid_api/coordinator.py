@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from pydantic_core import ValidationError
 
-from .const import DOMAIN
+from .api import UnraidGraphQLError
+from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -17,13 +20,14 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Disk, QueryResponse, Share
+    from .models import ArrayQuery, Disk, Metrics, Share
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UnraidServerData(TypedDict):  # noqa: D101
-    data: QueryResponse
+    metrics: Metrics | None
+    array: ArrayQuery | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
 
@@ -33,6 +37,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     known_disks: set[str]
     known_shares: set[str]
+    config_entry: UnraidConfigEntry
 
     def __init__(
         self, hass: HomeAssistant, config_entry: UnraidConfigEntry, api_client: UnraidApiClient
@@ -53,9 +58,41 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.known_shares: set[str] = set()
 
     async def _async_update_data(self) -> UnraidServerData:
-        query_response = await self.api_client.query()
+        data = UnraidServerData()
+        async with asyncio.TaskGroup() as tg:
+            metrics_task = tg.create_task(self._update_metrics())
+            array_task = tg.create_task(self._update_array())
+            if self.config_entry.options[CONF_DRIVES]:
+                disks_task = tg.create_task(self._update_disks())
+            if self.config_entry.options[CONF_SHARES]:
+                shares_task = tg.create_task(self._update_shares())
+
+        data["metrics"] = metrics_task.result()
+        data["array"] = array_task.result()
+        if self.config_entry.options[CONF_DRIVES]:
+            data["disks"] = disks_task.result()
+        if self.config_entry.options[CONF_SHARES]:
+            data["shares"] = shares_task.result()
+        return data
+
+    async def _update_metrics(self) -> Metrics | None:
+        try:
+            return (await self.api_client.query_metrics()).metrics
+        except (UnraidGraphQLError, ValidationError):
+            return None
+
+    async def _update_array(self) -> ArrayQuery | None:
+        try:
+            return await self.api_client.query_array()
+        except (UnraidGraphQLError, ValidationError):
+            return None
+
+    async def _update_disks(self) -> dict[str, Disk]:
         disks = {}
-        shares = {}
+        try:
+            query_response = await self.api_client.query_disks()
+        except (UnraidGraphQLError, ValidationError):
+            return disks
 
         for disk in query_response.array.disks:
             disks[disk.id] = disk
@@ -75,13 +112,22 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 self.known_disks.add(disk.id)
                 self._do_callback(self.disk_callbacks, disk)
 
+        return disks
+
+    async def _update_shares(self) -> dict[str, Share]:
+        shares = {}
+        try:
+            query_response = await self.api_client.query_shares()
+        except (UnraidGraphQLError, ValidationError):
+            return shares
+
         for share in query_response.shares:
             shares[share.name] = share
             if share.name not in self.known_shares:
                 self.known_shares.add(share.name)
                 self._do_callback(self.share_callbacks, share)
 
-        return UnraidServerData(data=query_response, disks=disks, shares=shares)
+        return shares
 
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
@@ -100,4 +146,4 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             try:
                 callback(*args, **kwargs)
             except Exception:
-                _LOGGER.exception("Error in callback")
+                _LOGGER.exception("Error in callback")()
