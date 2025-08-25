@@ -37,6 +37,7 @@ query Metrics {
       total
       percentTotal
       active
+      available
     }
     cpu {
       percentTotal

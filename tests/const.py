@@ -26,6 +26,7 @@ METRICS_RESPONSE = {
                 "total": 16646950912,
                 "active": 12746354688,
                 "percentTotal": 76.56870471583932,
+                "available": 3900596224,
             },
             "cpu": {"percentTotal": 5.1},
         },

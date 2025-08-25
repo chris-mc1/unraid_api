@@ -45,6 +45,7 @@ class MetricsMemory(BaseModel):  # noqa: D101
     total: int
     active: int
     percent_total: float = Field(alias="percentTotal")
+    available: int
 
 
 class MetricsCpu(BaseModel):  # noqa: D101

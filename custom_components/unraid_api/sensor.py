@@ -122,6 +122,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
             "used": coordinator.data["metrics"].memory.active,
             "free": coordinator.data["metrics"].memory.free,
             "total": coordinator.data["metrics"].memory.total,
+            "available": coordinator.data["metrics"].memory.available,
         },
     ),
     UnraidSensorEntityDescription(
