@@ -86,6 +86,7 @@ class Disk(BaseModel):  # noqa: D101
     fs_used: int | None = Field(alias="fsUsed")
     type: ArrayDiskType
     id: str
+    is_spinning: bool = Field(alias="isSpinning")
 
 
 class ParityDisk(BaseModel):  # noqa: D101
@@ -94,6 +95,7 @@ class ParityDisk(BaseModel):  # noqa: D101
     temp: int | None
     type: ArrayDiskType
     id: str
+    is_spinning: bool = Field(alias="isSpinning")
 
 
 class ArrayDiskStatus(StrEnum):  # noqa: D101

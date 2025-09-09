@@ -105,6 +105,11 @@
             "share_free": {
                 "name": "{share_name} Free space"
             }
+        },
+        "binary_sensor": {
+            "disk_spinning": {
+                "name": "{disk_name} spinning"
+            }
         }
     }
 }

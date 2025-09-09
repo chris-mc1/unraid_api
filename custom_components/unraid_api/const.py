@@ -7,7 +7,7 @@ from typing import Final
 from homeassistant.const import Platform
 
 DOMAIN: Final = "unraid_api"
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 CONF_SHARES: Final[str] = "shares"
 CONF_DRIVES: Final[str] = "drives"
@@ -71,6 +71,7 @@ query Disks {
       fsUsed
       type
       id
+      isSpinning
     }
     disks {
       name
@@ -82,6 +83,7 @@ query Disks {
       fsType
       type
       id
+      isSpinning
     }
     parities {
       name
@@ -89,6 +91,7 @@ query Disks {
       temp
       type
       id
+      isSpinning
     }
   }
 }

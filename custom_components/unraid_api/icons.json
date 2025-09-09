@@ -43,6 +43,11 @@
             "share_free": {
                 "default": "mdi:folder-network"
             }
+        },
+        "binary_sensor": {
+            "disk_spinning": {
+                "default": "mdi:harddisk"
+            }
         }
     }
 }
