@@ -132,12 +132,12 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
         for disk_id in self.known_disks:
-            self._do_callback(self.disk_callbacks, self.data["disks"][disk_id])
+            self._do_callback([callback], self.data["disks"][disk_id])
 
     def subscribe_shares(self, callback: Callable[[Share], None]) -> None:
         self.share_callbacks.add(callback)
         for share_name in self.known_shares:
-            self._do_callback(self.share_callbacks, self.data["shares"][share_name])
+            self._do_callback([callback], self.data["shares"][share_name])
 
     def _do_callback(
         self, callbacks: set[Callable[..., None]], *args: tuple[Any], **kwargs: dict[Any]
