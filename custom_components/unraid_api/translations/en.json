@@ -30,6 +30,7 @@
         "error": {
             "ssl_error": "SSL error when connecting to Unraid",
             "cannot_connect": "Failed to connect to Unraid",
+            "invalid_url": "Invalid URL",
             "error_response": "Unraid: {error_msg}"
         },
         "abort": {
