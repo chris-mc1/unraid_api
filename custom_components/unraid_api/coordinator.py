@@ -20,14 +20,14 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import ArrayQuery, Disk, Metrics, Share
+    from .models import Array, Disk, Metrics, Share
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UnraidServerData(TypedDict):  # noqa: D101
     metrics: Metrics | None
-    array: ArrayQuery | None
+    array: Array | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
 
@@ -77,11 +77,11 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     async def _update_metrics(self) -> Metrics | None:
         try:
-            return (await self.api_client.query_metrics()).metrics
+            return await self.api_client.query_metrics()
         except (UnraidGraphQLError, ValidationError):
             return None
 
-    async def _update_array(self) -> ArrayQuery | None:
+    async def _update_array(self) -> Array | None:
         try:
             return await self.api_client.query_array()
         except (UnraidGraphQLError, ValidationError):
@@ -94,19 +94,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         except (UnraidGraphQLError, ValidationError):
             return disks
 
-        for disk in query_response.array.disks:
-            disks[disk.id] = disk
-            if disk.id not in self.known_disks:
-                self.known_disks.add(disk.id)
-                self._do_callback(self.disk_callbacks, disk)
-
-        for disk in query_response.array.parities:
-            disks[disk.id] = disk
-            if disk.id not in self.known_disks:
-                self.known_disks.add(disk.id)
-                self._do_callback(self.disk_callbacks, disk)
-
-        for disk in query_response.array.caches:
+        for disk in query_response:
             disks[disk.id] = disk
             if disk.id not in self.known_disks:
                 self.known_disks.add(disk.id)
@@ -121,7 +109,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         except (UnraidGraphQLError, ValidationError):
             return shares
 
-        for share in query_response.shares:
+        for share in query_response:
             shares[share.name] = share
             if share.name not in self.known_shares:
                 self.known_shares.add(share.name)
@@ -145,5 +133,5 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         for callback in callbacks:
             try:
                 callback(*args, **kwargs)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _LOGGER.exception("Error in callback")()

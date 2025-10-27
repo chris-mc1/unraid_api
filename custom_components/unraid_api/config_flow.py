@@ -9,14 +9,12 @@ import voluptuous as vol
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from homeassistant.config_entries import ConfigFlow
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
-from homeassistant.helpers.aiohttp_client import (
-    async_get_clientsession,
-)
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import BooleanSelector
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
-from .api import UnraidApiClient, UnraidGraphQLError
+from .api import IncompatibleApiError, UnraidGraphQLError, get_api_client
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 
 if TYPE_CHECKING:
@@ -59,14 +57,14 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         self.reauth_entry: UnraidConfigEntry = None
 
     async def validate_config(self) -> None:
-        api_client = UnraidApiClient(
-            host=self.data[CONF_HOST],
-            api_key=self.data[CONF_API_KEY],
-            session=async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
-        )
         try:
+            api_client = await get_api_client(
+                self.data[CONF_HOST],
+                self.data[CONF_API_KEY],
+                async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
+            )
             response = await api_client.query_server_info()
-            self.title = response.server.name
+            self.title = response.name
         except ClientConnectorSSLError:
             self.errors = {"base": "ssl_error"}
         except (ClientConnectionError, TimeoutError):
@@ -74,6 +72,8 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         except UnraidGraphQLError as exc:
             self.errors = {"base": "error_response"}
             self.description_placeholders["error_msg"] = exc.args[0]
+        except IncompatibleApiError:
+            self.errors = {"base": "api_incompatible"}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""

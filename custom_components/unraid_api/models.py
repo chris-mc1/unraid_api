@@ -2,103 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
 
-
-### Server Info
-class ServerInfoQuery(BaseModel):  # noqa: D101
-    server: Server
-    info: Info
-
-
-class Server(BaseModel):  # noqa: D101
-    localurl: str
-    name: str
-
-
-class Info(BaseModel):  # noqa: D101
-    versions: InfoVersions
-
-
-class InfoVersions(BaseModel):  # noqa: D101
-    core: InfoVersionsCore
-
-
-class InfoVersionsCore(BaseModel):  # noqa: D101
-    unraid: str
-
-
-### Metrics
-class MetricsQuery(BaseModel):  # noqa: D101
-    metrics: Metrics
-
-
-class Metrics(BaseModel):  # noqa: D101
-    memory: MetricsMemory
-    cpu: MetricsCpu
-
-
-class MetricsMemory(BaseModel):  # noqa: D101
-    free: int
-    total: int
-    active: int
-    percent_total: float = Field(alias="percentTotal")
-    available: int
-
-
-class MetricsCpu(BaseModel):  # noqa: D101
-    percent_total: float = Field(alias="percentTotal")
-
-
-### Shares
-class SharesQuery(BaseModel):  # noqa: D101
-    shares: list[Share]
-
-
-class Share(BaseModel):  # noqa: D101
-    name: str
-    free: int
-    used: int
-    size: int
-    allocator: str
-    floor: str
-
-
-### Disks
-class DiskQuery(BaseModel):  # noqa: D101
-    array: DisksArray
-
-
-class DisksArray(BaseModel):  # noqa: D101
-    disks: list[Disk]
-    parities: list[ParityDisk]
-    caches: list[Disk]
-
-
-class Disk(BaseModel):  # noqa: D101
-    name: str
-    status: ArrayDiskStatus
-    temp: int | None
-    fs_size: int | None = Field(alias="fsSize")
-    fs_free: int | None = Field(alias="fsFree")
-    fs_used: int | None = Field(alias="fsUsed")
-    type: ArrayDiskType
-    id: str
-    is_spinning: bool = Field(alias="isSpinning")
-
-
-class ParityDisk(BaseModel):  # noqa: D101
-    name: str
-    status: ArrayDiskStatus
-    temp: int | None
-    type: ArrayDiskType
-    id: str
-    is_spinning: bool = Field(alias="isSpinning")
-
-
-class ArrayDiskStatus(StrEnum):  # noqa: D101
+class DiskStatus(StrEnum):  # noqa: D101
     DISK_NP = "DISK_NP"
     DISK_OK = "DISK_OK"
     DISK_NP_MISSING = "DISK_NP_MISSING"
@@ -110,21 +18,11 @@ class ArrayDiskStatus(StrEnum):  # noqa: D101
     DISK_NEW = "DISK_NEW"
 
 
-class ArrayDiskType(StrEnum):  # noqa: D101
-    DATA = "DATA"
+class DiskType(StrEnum):  # noqa: D101
+    Data = "DATA"
     Parity = "PARITY"
     Flash = "FLASH"
     Cache = "CACHE"
-
-
-### Array
-class ArrayQuery(BaseModel):  # noqa: D101
-    array: ArrayArray
-
-
-class ArrayArray(BaseModel):  # noqa: D101
-    state: ArrayState
-    capacity: ArrayCapacity
 
 
 class ArrayState(StrEnum):  # noqa: D101
@@ -141,11 +39,59 @@ class ArrayState(StrEnum):  # noqa: D101
     NO_DATA_DISKS = "NO_DATA_DISKS"
 
 
-class ArrayCapacity(BaseModel):  # noqa: D101
-    kilobytes: ArrayCapacityKilobytes
+@dataclass
+class ServerInfo:
+    """Server Info."""
+
+    localurl: str
+    name: str
+    unraid_version: str
 
 
-class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
+@dataclass
+class Metrics:
+    """Metrics."""
+
+    memory_free: int
+    memory_total: int
+    memory_active: int
+    memory_available: int
+    memory_percent_total: float
+    cpu_percent_total: float
+
+
+@dataclass
+class Share:
+    """Shares."""
+
+    name: str
     free: int
     used: int
-    total: int
+    size: int
+    allocator: str
+    floor: str
+
+
+@dataclass
+class Disk:
+    """Disk."""
+
+    name: str
+    status: DiskStatus
+    temp: int | None
+    fs_size: int | None
+    fs_free: int | None
+    fs_used: int | None
+    type: DiskType
+    id: str
+    is_spinning: bool
+
+
+@dataclass
+class Array:
+    """Array."""
+
+    state: ArrayState
+    capacity_free: int
+    capacity_used: int
+    capacity_total: int

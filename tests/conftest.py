@@ -7,8 +7,40 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from .const import CLIENT_RESPONSES
+
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from awesomeversion import AwesomeVersion
+    from custom_components.unraid_api.models import Array, Disk, Metrics, ServerInfo, Share
+
+pytest_plugins = ["aiohttp.pytest_plugin"]
+
+
+class MockAPIClient:
+    """Mock Unraid GraphQL API Client."""
+
+    def __init__(self, responses: dict) -> None:
+        self.responses = responses
+
+    async def query_api_version(self) -> AwesomeVersion:
+        return self.responses["api_version"]
+
+    async def query_server_info(self) -> ServerInfo:
+        return self.responses["server_info"]
+
+    async def query_metrics(self) -> Metrics:
+        return self.responses["metrics"]
+
+    async def query_shares(self) -> list[Share]:
+        return self.responses["shares"]
+
+    async def query_disks(self) -> list[Disk]:
+        return self.responses["disks"]
+
+    async def query_array(self) -> Array:
+        return self.responses["array"]
 
 
 @pytest.fixture(autouse=True)
@@ -24,3 +56,13 @@ def mock_setup_entry() -> Generator[AsyncMock]:
         "custom_components.unraid_api.async_setup_entry", return_value=True
     ) as mock_setup_entry:
         yield mock_setup_entry
+
+
+@pytest.fixture(params=CLIENT_RESPONSES)
+def mock_get_api_client(request: pytest.FixtureRequest) -> Generator[AsyncMock]:
+    """Override get_api_client."""
+    with patch(
+        "custom_components.unraid_api.config_flow.get_api_client",
+        return_value=MockAPIClient(request.param),
+    ) as mock_get_api_client:
+        yield mock_get_api_client

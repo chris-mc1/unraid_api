@@ -5,7 +5,7 @@ authors = [{ name = "chris-mc1" }]
 description = "Unraid integration for Homeassistant"
 readme = "README.md"
 requires-python = ">=3.13.2"
-dependencies = ["aiohttp>=3.11.13"]
+dependencies = ["aiohttp>=3.11.13", "awesomeversion>=25.5.0"]
 [project.urls]
 Homepage = "https://github.com/chris-mc1/unraid_api"
 Issues = "https://github.com/chris-mc1/unraid_api/issues"

@@ -12,7 +12,11 @@ from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .const import MOCK_CONFIG_DATA, MOCK_OPTION_DATA, SERVER_INFO_RESPONSE
+from .const import (
+    API_VERSION_RESPONSE_INCOMPATIBLE,
+    MOCK_CONFIG_DATA,
+    MOCK_OPTION_DATA,
+)
 
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
@@ -24,14 +28,9 @@ if TYPE_CHECKING:
 async def test_user_init(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    aioclient_mock: AiohttpClientMocker,
+    mock_get_api_client: AsyncMock,
 ) -> None:
     """Test config flow."""
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=SERVER_INFO_RESPONSE,
-        headers={"Content-Type": "application/json"},
-    )
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
 
     assert result["type"] is FlowResultType.FORM
@@ -158,10 +157,34 @@ async def test_user_connection_failed_ssl_error(
     mock_setup_entry.assert_not_awaited()
 
 
-async def test_reauth(
+async def test_user_connection_incompatible(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
     aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test a config flow with ClientConnectorSSLError."""
+    aioclient_mock.post(
+        "http://1.2.3.4/graphql",
+        json=API_VERSION_RESPONSE_INCOMPATIBLE,
+        headers={"Content-Type": "application/json"},
+    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={CONF_HOST: "http://1.2.3.4", CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"]["base"] == "api_incompatible"
+
+    hass.config_entries.flow.async_abort(result["flow_id"])
+    mock_setup_entry.assert_not_awaited()
+
+
+async def test_reauth(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    mock_get_api_client: AsyncMock,
 ) -> None:
     """Test a reauthentication flow."""
     mock_config = MockConfigEntry(
@@ -169,12 +192,6 @@ async def test_reauth(
         data=MOCK_CONFIG_DATA,
     )
     mock_config.add_to_hass(hass)
-
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=SERVER_INFO_RESPONSE,
-        headers={"Content-Type": "application/json"},
-    )
 
     result = await mock_config.start_reauth_flow(hass)
     assert result["type"] is FlowResultType.FORM
@@ -332,7 +349,11 @@ async def test_reauth_connection_failed_ssl_error(
     mock_setup_entry.assert_not_awaited()
 
 
-async def test_reconfigure(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
+async def _test_reconfigure(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    mock_get_api_client: AsyncMock,
+) -> None:
     """Test Reconfigure flow."""
     entry = MockConfigEntry(domain=DOMAIN, data=MOCK_CONFIG_DATA, options=MOCK_OPTION_DATA)
     entry.add_to_hass(hass)

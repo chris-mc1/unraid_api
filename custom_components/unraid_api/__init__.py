@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import (
 )
 from homeassistant.helpers.entity import DeviceInfo
 
-from .api import UnraidApiClient
+from .api import get_api_client
 from .const import DOMAIN, PLATFORMS
 from .coordinator import UnraidDataUpdateCoordinator
 
@@ -40,7 +40,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up this integration using config entry."""
     _LOGGER.debug("Setting up %s", config_entry.data[CONF_HOST])
-    api_client = UnraidApiClient(
+    api_client = await get_api_client(
         host=config_entry.data[CONF_HOST],
         api_key=config_entry.data[CONF_API_KEY],
         session=async_get_clientsession(hass, config_entry.data[CONF_VERIFY_SSL]),
@@ -48,9 +48,9 @@ async def async_setup_entry(
     server_info = await api_client.query_server_info()
     device_info = DeviceInfo(
         identifiers={(DOMAIN, config_entry.entry_id)},
-        sw_version=server_info.info.versions.core.unraid,
-        name=server_info.server.name,
-        configuration_url=server_info.server.localurl,
+        sw_version=server_info.unraid_version,
+        name=server_info.name,
+        configuration_url=server_info.localurl,
     )
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
     await coordinator.async_config_entry_first_refresh()
