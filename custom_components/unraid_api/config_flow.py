@@ -14,7 +14,7 @@ from homeassistant.helpers.selector import BooleanSelector
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
-from .api import IncompatibleApiError, UnraidGraphQLError, get_api_client
+from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 
 if TYPE_CHECKING:
@@ -66,14 +66,23 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             response = await api_client.query_server_info()
             self.title = response.name
         except ClientConnectorSSLError:
+            _LOGGER.exception("SSL error")
             self.errors = {"base": "ssl_error"}
         except (ClientConnectionError, TimeoutError):
+            _LOGGER.exception("Connection error")
             self.errors = {"base": "cannot_connect"}
+        except UnraidAuthError:
+            _LOGGER.exception("Auth failed")
+            self.errors = {"base": "auth_failed"}
         except UnraidGraphQLError as exc:
+            _LOGGER.exception("GraphQL Error response: %s", exc.response)
             self.errors = {"base": "error_response"}
             self.description_placeholders["error_msg"] = exc.args[0]
-        except IncompatibleApiError:
+        except IncompatibleApiError as exc:
+            _LOGGER.exception("Incompatible API, %s < %s", exc.version, exc.min_version)
             self.errors = {"base": "api_incompatible"}
+            self.description_placeholders["min_version"] = exc.min_version
+            self.description_placeholders["version"] = exc.version
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""

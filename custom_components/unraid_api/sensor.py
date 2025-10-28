@@ -281,12 +281,18 @@ class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity)
 
     @property
     def native_value(self) -> StateType:
-        return self.entity_description.value_fn(self.coordinator)
+        try:
+            return self.entity_description.value_fn(self.coordinator)
+        except (KeyError, AttributeError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.extra_values_fn:
-            return self.entity_description.extra_values_fn(self.coordinator)
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(self.coordinator)
+        except (KeyError, AttributeError):
+            return None
         return None
 
 
@@ -315,14 +321,20 @@ class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnt
 
     @property
     def native_value(self) -> StateType:
-        return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
+        try:
+            return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
+        except (KeyError, AttributeError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.extra_values_fn:
-            return self.entity_description.extra_values_fn(
-                self.coordinator.data["disks"][self.disk_id]
-            )
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["disks"][self.disk_id]
+                )
+        except (KeyError, AttributeError):
+            return None
         return None
 
 
@@ -349,12 +361,20 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
 
     @property
     def native_value(self) -> StateType:
-        return self.entity_description.value_fn(self.coordinator.data["shares"][self.share_name])
+        try:
+            return self.entity_description.value_fn(
+                self.coordinator.data["shares"][self.share_name]
+            )
+        except (KeyError, AttributeError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.extra_values_fn:
-            return self.entity_description.extra_values_fn(
-                self.coordinator.data["shares"][self.share_name]
-            )
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["shares"][self.share_name]
+                )
+        except (KeyError, AttributeError):
+            return None
         return None

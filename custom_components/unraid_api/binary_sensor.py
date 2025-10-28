@@ -91,12 +91,18 @@ class UnraidDiskBinarySensorEntity(
 
     @property
     def is_on(self) -> StateType:
-        return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
+        try:
+            return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
+        except (KeyError, AttributeError):
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.extra_values_fn:
-            return self.entity_description.extra_values_fn(
-                self.coordinator.data["disks"][self.disk_id]
-            )
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["disks"][self.disk_id]
+                )
+        except (KeyError, AttributeError):
+            return None
         return None

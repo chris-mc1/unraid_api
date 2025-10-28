@@ -16,6 +16,7 @@
                 }
             },
             "reauth_key": {
+                "title": "Add new Unraid Server",
                 "data": {
                     "api_key": "API Key"
                 }
@@ -30,7 +31,9 @@
         "error": {
             "ssl_error": "SSL Error when connecting to Unraid",
             "cannot_connect": "Failed to connect to Unraid",
-            "error_response": "Recived an Error response from Unraid: {error_msg}"
+            "error_response": "Recived an Error response from Unraid: {error_msg}",
+            "api_incompatible": "Incompatible API version (Current: {version}, minimum: {min_version})",
+            "auth_failed": "Authentication failed"
         },
         "abort": {
             "reauth_successful": "Re-authentication was successful",
@@ -110,6 +113,26 @@
             "disk_spinning": {
                 "name": "{disk_name} spinning"
             }
+        }
+    },
+    "exceptions": {
+        "ssl_error": {
+            "message": "SSL Error when connecting to Unraid: {error}"
+        },
+        "cannot_connect": {
+            "message": "Failed to connect to Unraid: {error}"
+        },
+        "error_response": {
+            "message": "Recived an Error response from Unraid: {error_msg}"
+        },
+        "data_invalid": {
+            "message": "Recived invalid data from Unraid"
+        },
+        "api_incompatible": {
+            "message": "Incompatible API version (Current: {version}, minimum: {min_version})"
+        },
+        "auth_failed": {
+            "message": "Authentication failed {error_msg}"
         }
     }
 }

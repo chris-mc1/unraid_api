@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from awesomeversion import AwesomeVersion
@@ -20,9 +21,23 @@ _LOGGER = logging.getLogger(__name__)
 class UnraidGraphQLError(Exception):
     """Raised when the response contains errors."""
 
+    def __init__(self, response: dict, *args: Any) -> None:
+        self.response = response
+        error_msg = ", ".join(entry.get("message") for entry in response["errors"])
+        super().__init__(error_msg, *args)
+
+
+class UnraidAuthError(UnraidGraphQLError):
+    """Raised when the request was unauthorized."""
+
 
 class IncompatibleApiError(Exception):
     """Raised when the response contains errors."""
+
+    def __init__(self, version: AwesomeVersion, min_version: AwesomeVersion, *args: Any) -> None:
+        self.version = version
+        self.min_version = min_version
+        super().__init__(*args)
 
 
 def _import_client_class(
@@ -33,7 +48,7 @@ def _import_client_class(
 
         return UnraidApiV420
 
-    raise IncompatibleApiError
+    raise IncompatibleApiError(version=api_version, min_version=AwesomeVersion("4.20.0"))
 
 
 async def get_api_client(host: str, api_key: str, session: ClientSession) -> UnraidApiClient:
@@ -74,15 +89,18 @@ class UnraidApiClient:
         )
         result = await response.json()
         if "errors" in result:
-            error_msg = ", ".join(entry.get("message") for entry in result["errors"])
-            _LOGGER.error("Error in query response: %s", error_msg)
-            raise UnraidGraphQLError(error_msg)
+            try:
+                if result["errors"][0]["extensions"]["code"] == "UNAUTHENTICATED":
+                    raise UnraidAuthError(response=result)
+            except KeyError:
+                pass
+            raise UnraidGraphQLError(response=result)
 
         return model.model_validate(result["data"])
 
     async def query_api_version(self) -> AwesomeVersion:
-        response = await self.call_api(API_VERSION_QUERY, ApiVersionQuery)
         try:
+            response = await self.call_api(API_VERSION_QUERY, ApiVersionQuery)
             return AwesomeVersion(response.info.versions.core.api.split("+")[0])
         except ValidationError:
             return AwesomeVersion("")
