@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
-
+from custom_components import unraid_api
+from custom_components.unraid_api import config_flow
 import pytest
 
 from .const import CLIENT_RESPONSES
@@ -59,10 +60,12 @@ def mock_setup_entry() -> Generator[AsyncMock]:
 
 
 @pytest.fixture(params=CLIENT_RESPONSES)
-def mock_get_api_client(request: pytest.FixtureRequest) -> Generator[AsyncMock]:
+def mock_get_api_client(
+    request: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[AsyncMock]:
     """Override get_api_client."""
-    with patch(
-        "custom_components.unraid_api.config_flow.get_api_client",
-        return_value=MockAPIClient(request.param),
-    ) as mock_get_api_client:
-        yield mock_get_api_client
+    mock_get_api_client = AsyncMock(return_value=MockAPIClient(request.param))
+    monkeypatch.setattr(unraid_api, "get_api_client", mock_get_api_client)
+    monkeypatch.setattr(config_flow, "get_api_client", mock_get_api_client)
+    return mock_get_api_client

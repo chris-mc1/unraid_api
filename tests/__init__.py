@@ -14,15 +14,15 @@ if TYPE_CHECKING:
 async def setup_config_entry(
     hass: HomeAssistant,
     data: dict[str, Any],
-    unique_id: str = "any",
-) -> bool:
+    options: dict[str, Any],
+) -> MockConfigEntry:
     """Do setup of a MockConfigEntry."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=data,
-        unique_id=unique_id,
+        options=options,
     )
     entry.add_to_hass(hass)
-    result = await hass.config_entries.async_setup(entry.entry_id)
+    await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    return result
+    return entry

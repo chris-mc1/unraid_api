@@ -168,5 +168,5 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         for callback in callbacks:
             try:
                 callback(*args, **kwargs)
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Error in callback")()
+            except Exception:
+                _LOGGER.exception("Error in callback")

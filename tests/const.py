@@ -31,7 +31,24 @@ API_VERSION_RESPONSE_INCOMPATIBLE = {
     }
 }
 
-
+API_VERSION_RESPONSE_UNAUTHENTICATED = {
+    "errors": [
+        {
+            "message": "No user session found",
+            "locations": [{"line": 2, "column": 3}],
+            "path": ["info"],
+            "extensions": {
+                "code": "UNAUTHENTICATED",
+                "originalError": {
+                    "message": "No user session found",
+                    "error": "Unauthorized",
+                    "statusCode": 401,
+                },
+            },
+        }
+    ],
+    "data": None,
+}
 CLIENT_RESPONSES = [
     {
         "api_version": AwesomeVersion("4.20.0"),
