@@ -1,4 +1,4 @@
-"""The Unraid integration."""
+"""Unraid Sensors."""
 
 from __future__ import annotations
 
