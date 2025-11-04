@@ -1,6 +1,6 @@
 # Unraid
 
-The **Unraid API** integration allows users to integrate their [Unraid](https://www.home-connect.com/global) server using Unraids local GraphQL API.
+The **Unraid API** integration allows users to integrate their [Unraid](https://unraid.net/) server using Unraids local GraphQL API.
 
 ## Install the Integration
 
