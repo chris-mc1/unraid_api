@@ -15,9 +15,9 @@ from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfInformation, U
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_DRIVES, CONF_SHARES
+from .const import CONF_DOCKER, CONF_DRIVES, CONF_SHARES, CONF_VMS
 from .coordinator import UnraidDataUpdateCoordinator
-from .models import Disk, DiskType, Share
+from .models import Disk, DiskType, DockerContainer, Share, VirtualMachine
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,6 +50,20 @@ class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thaw
 
     value_fn: Callable[[Share], StateType]
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
+
+
+class UnraidVmSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+    """Description for Unraid VM Sensor Entity."""
+
+    value_fn: Callable[[VirtualMachine], StateType]
+    extra_values_fn: Callable[[VirtualMachine], dict[str, Any]] | None = None
+
+
+class UnraidDockerSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+    """Description for Unraid Docker Sensor Entity."""
+
+    value_fn: Callable[[DockerContainer], StateType]
+    extra_values_fn: Callable[[DockerContainer], dict[str, Any]] | None = None
 
 
 def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> StateType:
@@ -235,6 +249,109 @@ SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
     ),
 )
 
+VM_SENSOR_DESCRIPTIONS: tuple[UnraidVmSensorEntityDescription, ...] = (
+    UnraidVmSensorEntityDescription(
+        key="vm_state",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda vm: vm.state.value,
+        options=[
+            "running",
+            "stopped",
+            "paused",
+            "pmsuspended",
+            "shutting-down",
+            "shutdown",
+            "crashed",
+            "dying",
+        ],
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidVmSensorEntityDescription(
+        key="vm_cpu_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda vm: vm.cpu_usage,
+        entity_registry_enabled_default=False,
+    ),
+    UnraidVmSensorEntityDescription(
+        key="vm_memory_usage",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda vm: vm.memory_usage,
+        extra_values_fn=lambda vm: {
+            "total_memory": vm.memory,
+            "cpu_count": vm.cpu_count,
+            "autostart": vm.autostart,
+            "description": vm.description,
+        },
+        entity_registry_enabled_default=False,
+    ),
+)
+
+DOCKER_SENSOR_DESCRIPTIONS: tuple[UnraidDockerSensorEntityDescription, ...] = (
+    UnraidDockerSensorEntityDescription(
+        key="docker_state",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda container: container.state.value,
+        options=[
+            "running",
+            "stopped",
+            "paused",
+            "restarting",
+            "created",
+            "exited",
+            "dead",
+        ],
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidDockerSensorEntityDescription(
+        key="docker_cpu_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda container: container.cpu_usage,
+        entity_registry_enabled_default=False,
+    ),
+    UnraidDockerSensorEntityDescription(
+        key="docker_memory_usage",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda container: container.memory_usage,
+        entity_registry_enabled_default=False,
+    ),
+    UnraidDockerSensorEntityDescription(
+        key="docker_network_rx",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda container: container.network_rx,
+        entity_registry_enabled_default=False,
+    ),
+    UnraidDockerSensorEntityDescription(
+        key="docker_network_tx",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda container: container.network_tx,
+        extra_values_fn=lambda container: {
+            "image": container.image,
+            "autostart": container.autostart,
+        },
+        entity_registry_enabled_default=False,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,  # noqa: ARG001
@@ -268,10 +385,32 @@ async def async_setup_entry(
         ]
         async_add_entites(entities)
 
-    if config_entry.options[CONF_DRIVES]:
+    @callback
+    def add_vm_callback(vm: VirtualMachine) -> None:
+        _LOGGER.debug("Adding new VM: %s", vm.name)
+        entities = [
+            UnraidVmSensor(description, config_entry, vm.id)
+            for description in VM_SENSOR_DESCRIPTIONS
+        ]
+        async_add_entites(entities)
+
+    @callback
+    def add_docker_callback(container: DockerContainer) -> None:
+        _LOGGER.debug("Adding new Docker container: %s", container.name)
+        entities = [
+            UnraidDockerSensor(description, config_entry, container.id)
+            for description in DOCKER_SENSOR_DESCRIPTIONS
+        ]
+        async_add_entites(entities)
+
+    if config_entry.options.get(CONF_DRIVES, True):
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
-    if config_entry.options[CONF_SHARES]:
+    if config_entry.options.get(CONF_SHARES, True):
         config_entry.runtime_data.coordinator.subscribe_shares(add_share_callback)
+    if config_entry.options.get(CONF_VMS, False):
+        config_entry.runtime_data.coordinator.subscribe_vms(add_vm_callback)
+    if config_entry.options.get(CONF_DOCKER, False):
+        config_entry.runtime_data.coordinator.subscribe_docker(add_docker_callback)
 
 
 class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
@@ -387,6 +526,94 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
             if self.entity_description.extra_values_fn:
                 return self.entity_description.extra_values_fn(
                     self.coordinator.data["shares"][self.share_name]
+                )
+        except (KeyError, AttributeError):
+            return None
+        return None
+
+
+class UnraidVmSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+    """Sensor for Unraid VMs."""
+
+    entity_description: UnraidVmSensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        description: UnraidVmSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+        vm_id: str,
+    ) -> None:
+        super().__init__(config_entry.runtime_data.coordinator)
+        self.vm_id = vm_id
+        self.entity_description = description
+        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.vm_id}"
+        self._attr_translation_key = description.key
+        self._attr_translation_placeholders = {
+            "vm_name": self.coordinator.data["vms"][self.vm_id].name
+        }
+        self._attr_available = False
+        self._attr_device_info = config_entry.runtime_data.device_info
+
+    @property
+    def native_value(self) -> StateType:
+        try:
+            return self.entity_description.value_fn(self.coordinator.data["vms"][self.vm_id])
+        except (KeyError, AttributeError):
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["vms"][self.vm_id]
+                )
+        except (KeyError, AttributeError):
+            return None
+        return None
+
+
+class UnraidDockerSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+    """Sensor for Unraid Docker containers."""
+
+    entity_description: UnraidDockerSensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        description: UnraidDockerSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+        container_id: str,
+    ) -> None:
+        super().__init__(config_entry.runtime_data.coordinator)
+        self.container_id = container_id
+        self.entity_description = description
+        self._attr_unique_id = (
+            f"{config_entry.entry_id}-{description.key}-{self.container_id}"
+        )
+        self._attr_translation_key = description.key
+        self._attr_translation_placeholders = {
+            "container_name": self.coordinator.data["docker"][self.container_id].name
+        }
+        self._attr_available = False
+        self._attr_device_info = config_entry.runtime_data.device_info
+
+    @property
+    def native_value(self) -> StateType:
+        try:
+            return self.entity_description.value_fn(
+                self.coordinator.data["docker"][self.container_id]
+            )
+        except (KeyError, AttributeError):
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["docker"][self.container_id]
                 )
         except (KeyError, AttributeError):
             return None
