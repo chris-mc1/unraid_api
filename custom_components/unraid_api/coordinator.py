@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from pydantic_core import ValidationError
 
 from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError
-from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .const import CONF_DOCKER, CONF_DRIVES, CONF_SHARES, CONF_VMS, DOMAIN
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share
+    from .models import Array, Disk, DockerContainer, Metrics, Share, VirtualMachine
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ class UnraidServerData(TypedDict):  # noqa: D101
     array: Array | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
+    vms: dict[str, VirtualMachine]
+    docker: dict[str, DockerContainer]
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -39,6 +41,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     known_disks: set[str]
     known_shares: set[str]
+    known_vms: set[str]
+    known_docker: set[str]
     config_entry: UnraidConfigEntry
 
     def __init__(
@@ -54,10 +58,14 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.api_client = api_client
         self.disk_callbacks: set[Callable[[Disk], None]] = set()
         self.share_callbacks: set[Callable[[Share], None]] = set()
+        self.vm_callbacks: set[Callable[[VirtualMachine], None]] = set()
+        self.docker_callbacks: set[Callable[[DockerContainer], None]] = set()
 
     async def _async_setup(self) -> None:
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
+        self.known_vms: set[str] = set()
+        self.known_docker: set[str] = set()
 
     async def _async_update_data(self) -> UnraidServerData:
         data = UnraidServerData()
@@ -65,10 +73,14 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._update_metrics(data))
                 tg.create_task(self._update_array(data))
-                if self.config_entry.options[CONF_DRIVES]:
+                if self.config_entry.options.get(CONF_DRIVES, True):
                     tg.create_task(self._update_disks(data))
-                if self.config_entry.options[CONF_SHARES]:
+                if self.config_entry.options.get(CONF_SHARES, True):
                     tg.create_task(self._update_shares(data))
+                if self.config_entry.options.get(CONF_VMS, False):
+                    tg.create_task(self._update_vms(data))
+                if self.config_entry.options.get(CONF_DOCKER, False):
+                    tg.create_task(self._update_docker(data))
 
         except* ClientConnectorSSLError as exc:
             _LOGGER.debug("Update: SSL error: %s", str(exc))
@@ -152,6 +164,28 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 self._do_callback(self.share_callbacks, share)
         data["shares"] = shares
 
+    async def _update_vms(self, data: UnraidServerData) -> None:
+        vms = {}
+        query_response = await self.api_client.query_vms()
+
+        for vm in query_response:
+            vms[vm.id] = vm
+            if vm.id not in self.known_vms:
+                self.known_vms.add(vm.id)
+                self._do_callback(self.vm_callbacks, vm)
+        data["vms"] = vms
+
+    async def _update_docker(self, data: UnraidServerData) -> None:
+        docker = {}
+        query_response = await self.api_client.query_docker_containers()
+
+        for container in query_response:
+            docker[container.id] = container
+            if container.id not in self.known_docker:
+                self.known_docker.add(container.id)
+                self._do_callback(self.docker_callbacks, container)
+        data["docker"] = docker
+
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
         for disk_id in self.known_disks:
@@ -161,6 +195,49 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.share_callbacks.add(callback)
         for share_name in self.known_shares:
             self._do_callback([callback], self.data["shares"][share_name])
+
+    def subscribe_vms(self, callback: Callable[[VirtualMachine], None]) -> None:
+        self.vm_callbacks.add(callback)
+        for vm_id in self.known_vms:
+            self._do_callback([callback], self.data["vms"][vm_id])
+
+    def subscribe_docker(self, callback: Callable[[DockerContainer], None]) -> None:
+        self.docker_callbacks.add(callback)
+        for container_id in self.known_docker:
+            self._do_callback([callback], self.data["docker"][container_id])
+
+    async def async_vm_action(self, vm_id: str, action: str) -> bool:
+        """Execute an action on a VM."""
+        actions = {
+            "start": self.api_client.vm_start,
+            "stop": self.api_client.vm_stop,
+            "restart": self.api_client.vm_restart,
+            "pause": self.api_client.vm_pause,
+            "resume": self.api_client.vm_resume,
+            "force_stop": self.api_client.vm_force_stop,
+        }
+        if action not in actions:
+            raise ValueError(f"Unknown VM action: {action}")
+
+        result = await actions[action](vm_id)
+        await self.async_request_refresh()
+        return result
+
+    async def async_docker_action(self, container_id: str, action: str) -> bool:
+        """Execute an action on a Docker container."""
+        actions = {
+            "start": self.api_client.docker_start,
+            "stop": self.api_client.docker_stop,
+            "restart": self.api_client.docker_restart,
+            "pause": self.api_client.docker_pause,
+            "unpause": self.api_client.docker_unpause,
+        }
+        if action not in actions:
+            raise ValueError(f"Unknown Docker action: {action}")
+
+        result = await actions[action](container_id)
+        await self.async_request_refresh()
+        return result
 
     def _do_callback(
         self, callbacks: set[Callable[..., None]], *args: tuple[Any], **kwargs: dict[Any]

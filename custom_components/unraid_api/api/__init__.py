@@ -13,7 +13,15 @@ from pydantic import BaseModel, ValidationError
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
-    from unraid_api.models import Array, Disk, Metrics, ServerInfo, Share
+    from unraid_api.models import (
+        Array,
+        Disk,
+        DockerContainer,
+        Metrics,
+        ServerInfo,
+        Share,
+        VirtualMachine,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -123,6 +131,58 @@ class UnraidApiClient:
 
     @abstractmethod
     async def query_array(self) -> Array:
+        pass
+
+    @abstractmethod
+    async def query_vms(self) -> list[VirtualMachine]:
+        pass
+
+    @abstractmethod
+    async def query_docker_containers(self) -> list[DockerContainer]:
+        pass
+
+    @abstractmethod
+    async def vm_start(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def vm_stop(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def vm_restart(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def vm_pause(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def vm_resume(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def vm_force_stop(self, vm_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def docker_start(self, container_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def docker_stop(self, container_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def docker_restart(self, container_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def docker_pause(self, container_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def docker_unpause(self, container_id: str) -> bool:
         pass
 
 
