@@ -12,7 +12,9 @@
             "options": {
                 "data": {
                     "shares": "Monitor Shares",
-                    "drives": "Monitor Disks"
+                    "drives": "Monitor Disks",
+                    "vms": "Monitor VMs",
+                    "docker": "Monitor Docker Containers"
                 }
             },
             "reauth_key": {
@@ -24,7 +26,9 @@
             "reconfigure": {
                 "data": {
                     "shares": "Monitor Shares",
-                    "drives": "Monitor Disks"
+                    "drives": "Monitor Disks",
+                    "vms": "Monitor VMs",
+                    "docker": "Monitor Docker Containers"
                 }
             }
         },
@@ -107,11 +111,85 @@
             },
             "share_free": {
                 "name": "{share_name} Free space"
+            },
+            "vm_state": {
+                "name": "{vm_name} State",
+                "state": {
+                    "running": "Running",
+                    "stopped": "Stopped",
+                    "paused": "Paused",
+                    "pmsuspended": "Suspended",
+                    "shutting-down": "Shutting down",
+                    "shutdown": "Shut down",
+                    "crashed": "Crashed",
+                    "dying": "Dying"
+                }
+            },
+            "vm_cpu_usage": {
+                "name": "{vm_name} CPU usage"
+            },
+            "vm_memory_usage": {
+                "name": "{vm_name} Memory usage"
+            },
+            "docker_state": {
+                "name": "{container_name} State",
+                "state": {
+                    "running": "Running",
+                    "stopped": "Stopped",
+                    "paused": "Paused",
+                    "restarting": "Restarting",
+                    "created": "Created",
+                    "exited": "Exited",
+                    "dead": "Dead"
+                }
+            },
+            "docker_cpu_usage": {
+                "name": "{container_name} CPU usage"
+            },
+            "docker_memory_usage": {
+                "name": "{container_name} Memory usage"
+            },
+            "docker_network_rx": {
+                "name": "{container_name} Network received"
+            },
+            "docker_network_tx": {
+                "name": "{container_name} Network transmitted"
             }
         },
         "binary_sensor": {
             "disk_spinning": {
                 "name": "{disk_name} spinning"
+            }
+        },
+        "switch": {
+            "vm_power": {
+                "name": "{vm_name} Power"
+            },
+            "docker_power": {
+                "name": "{container_name} Power"
+            }
+        },
+        "button": {
+            "vm_restart": {
+                "name": "{vm_name} Restart"
+            },
+            "vm_force_stop": {
+                "name": "{vm_name} Force stop"
+            },
+            "vm_pause": {
+                "name": "{vm_name} Pause"
+            },
+            "vm_resume": {
+                "name": "{vm_name} Resume"
+            },
+            "docker_restart": {
+                "name": "{container_name} Restart"
+            },
+            "docker_pause": {
+                "name": "{container_name} Pause"
+            },
+            "docker_unpause": {
+                "name": "{container_name} Unpause"
             }
         }
     },
