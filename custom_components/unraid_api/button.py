@@ -39,10 +39,10 @@ class UnraidDockerButtonEntityDescription(ButtonEntityDescription):
 
 VM_BUTTON_DESCRIPTIONS: tuple[UnraidVmButtonEntityDescription, ...] = (
     UnraidVmButtonEntityDescription(
-        key="vm_restart",
-        translation_key="vm_restart",
+        key="vm_reboot",
+        translation_key="vm_reboot",
         device_class=ButtonDeviceClass.RESTART,
-        action="restart",
+        action="reboot",
     ),
     UnraidVmButtonEntityDescription(
         key="vm_force_stop",
@@ -61,24 +61,9 @@ VM_BUTTON_DESCRIPTIONS: tuple[UnraidVmButtonEntityDescription, ...] = (
     ),
 )
 
-DOCKER_BUTTON_DESCRIPTIONS: tuple[UnraidDockerButtonEntityDescription, ...] = (
-    UnraidDockerButtonEntityDescription(
-        key="docker_restart",
-        translation_key="docker_restart",
-        device_class=ButtonDeviceClass.RESTART,
-        action="restart",
-    ),
-    UnraidDockerButtonEntityDescription(
-        key="docker_pause",
-        translation_key="docker_pause",
-        action="pause",
-    ),
-    UnraidDockerButtonEntityDescription(
-        key="docker_unpause",
-        translation_key="docker_unpause",
-        action="unpause",
-    ),
-)
+# Docker only supports start/stop actions via the switch
+# No additional button actions are available
+DOCKER_BUTTON_DESCRIPTIONS: tuple[UnraidDockerButtonEntityDescription, ...] = ()
 
 
 async def async_setup_entry(

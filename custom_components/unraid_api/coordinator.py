@@ -211,7 +211,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         actions = {
             "start": self.api_client.vm_start,
             "stop": self.api_client.vm_stop,
-            "restart": self.api_client.vm_restart,
+            "reboot": self.api_client.vm_reboot,
             "pause": self.api_client.vm_pause,
             "resume": self.api_client.vm_resume,
             "force_stop": self.api_client.vm_force_stop,
@@ -228,9 +228,6 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         actions = {
             "start": self.api_client.docker_start,
             "stop": self.api_client.docker_stop,
-            "restart": self.api_client.docker_restart,
-            "pause": self.api_client.docker_pause,
-            "unpause": self.api_client.docker_unpause,
         }
         if action not in actions:
             raise ValueError(f"Unknown Docker action: {action}")

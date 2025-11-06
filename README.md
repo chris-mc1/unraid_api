@@ -66,37 +66,30 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
   - Percentage of used space on the Disk
   - Spinning status (binary sensor)
 
-### VM Entities (Planned)
+### VM Entities
 
 - When "Monitor VMs" enabled, for each Virtual Machine:
 
   **Sensors:**
-  - VM State (running, stopped, paused, shutting-down)
-  - CPU usage (percentage)
-  - Memory usage
+  - VM State (running, stopped, paused, etc.)
 
   **Controls:**
   - Power switch (start/stop VM)
-  - Restart button
+  - Reboot button
   - Force stop button
-  - Pause/Resume button
+  - Pause button
+  - Resume button
 
-### Docker Entities (Planned)
+### Docker Entities
 
 - When "Monitor Docker" enabled, for each Docker container:
 
   **Sensors:**
-  - Container State (running, stopped, paused, restarting)
-  - CPU usage (percentage)
-  - Memory usage
-  - Network received (bytes)
-  - Network transmitted (bytes)
+  - Container State (running, stopped, paused, exited, etc.)
+  - Extra attributes: image, autostart
 
   **Controls:**
   - Power switch (start/stop container)
-  - Restart button
-  - Pause button
-  - Unpause button
 
 ## Remove integration
 

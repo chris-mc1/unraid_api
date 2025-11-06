@@ -115,45 +115,26 @@
             "vm_state": {
                 "name": "{vm_name} State",
                 "state": {
-                    "running": "Running",
-                    "stopped": "Stopped",
-                    "paused": "Paused",
-                    "pmsuspended": "Suspended",
-                    "shutting-down": "Shutting down",
-                    "shutdown": "Shut down",
-                    "crashed": "Crashed",
-                    "dying": "Dying"
+                    "RUNNING": "Running",
+                    "STOPPED": "Stopped",
+                    "PAUSED": "Paused",
+                    "PMSUSPENDED": "Suspended",
+                    "SHUTTING_DOWN": "Shutting down",
+                    "SHUTDOWN": "Shut down",
+                    "CRASHED": "Crashed"
                 }
-            },
-            "vm_cpu_usage": {
-                "name": "{vm_name} CPU usage"
-            },
-            "vm_memory_usage": {
-                "name": "{vm_name} Memory usage"
             },
             "docker_state": {
                 "name": "{container_name} State",
                 "state": {
-                    "running": "Running",
-                    "stopped": "Stopped",
-                    "paused": "Paused",
-                    "restarting": "Restarting",
-                    "created": "Created",
-                    "exited": "Exited",
-                    "dead": "Dead"
+                    "RUNNING": "Running",
+                    "STOPPED": "Stopped",
+                    "PAUSED": "Paused",
+                    "RESTARTING": "Restarting",
+                    "CREATED": "Created",
+                    "EXITED": "Exited",
+                    "DEAD": "Dead"
                 }
-            },
-            "docker_cpu_usage": {
-                "name": "{container_name} CPU usage"
-            },
-            "docker_memory_usage": {
-                "name": "{container_name} Memory usage"
-            },
-            "docker_network_rx": {
-                "name": "{container_name} Network received"
-            },
-            "docker_network_tx": {
-                "name": "{container_name} Network transmitted"
             }
         },
         "binary_sensor": {
@@ -170,8 +151,8 @@
             }
         },
         "button": {
-            "vm_restart": {
-                "name": "{vm_name} Restart"
+            "vm_reboot": {
+                "name": "{vm_name} Reboot"
             },
             "vm_force_stop": {
                 "name": "{vm_name} Force stop"
@@ -181,15 +162,6 @@
             },
             "vm_resume": {
                 "name": "{vm_name} Resume"
-            },
-            "docker_restart": {
-                "name": "{container_name} Restart"
-            },
-            "docker_pause": {
-                "name": "{container_name} Pause"
-            },
-            "docker_unpause": {
-                "name": "{container_name} Unpause"
             }
         }
     },

@@ -150,7 +150,7 @@ class UnraidApiClient:
         pass
 
     @abstractmethod
-    async def vm_restart(self, vm_id: str) -> bool:
+    async def vm_reboot(self, vm_id: str) -> bool:
         pass
 
     @abstractmethod
@@ -171,18 +171,6 @@ class UnraidApiClient:
 
     @abstractmethod
     async def docker_stop(self, container_id: str) -> bool:
-        pass
-
-    @abstractmethod
-    async def docker_restart(self, container_id: str) -> bool:
-        pass
-
-    @abstractmethod
-    async def docker_pause(self, container_id: str) -> bool:
-        pass
-
-    @abstractmethod
-    async def docker_unpause(self, container_id: str) -> bool:
         pass
 
 
