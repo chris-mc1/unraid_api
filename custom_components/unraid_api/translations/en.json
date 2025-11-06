@@ -135,6 +135,30 @@
                     "EXITED": "Exited",
                     "DEAD": "Dead"
                 }
+            },
+            "vms_total": {
+                "name": "VMs Total"
+            },
+            "vms_running": {
+                "name": "VMs Running"
+            },
+            "vms_stopped": {
+                "name": "VMs Stopped"
+            },
+            "vms_paused": {
+                "name": "VMs Paused"
+            },
+            "docker_total": {
+                "name": "Containers Total"
+            },
+            "docker_running": {
+                "name": "Containers Running"
+            },
+            "docker_stopped": {
+                "name": "Containers Stopped"
+            },
+            "docker_paused": {
+                "name": "Containers Paused"
             }
         },
         "binary_sensor": {

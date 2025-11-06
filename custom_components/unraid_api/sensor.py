@@ -17,7 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_DOCKER, CONF_DRIVES, CONF_SHARES, CONF_VMS
 from .coordinator import UnraidDataUpdateCoordinator
-from .models import Disk, DiskType, DockerContainer, Share, VirtualMachine
+from .models import Disk, DiskType, DockerContainer, DockerState, Share, VirtualMachine, VmState
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -78,6 +78,26 @@ def calc_disk_usage_percentage(disk: Disk) -> StateType:
     if disk.fs_used is None or disk.fs_size is None or disk.fs_size == 0:
         return None
     return (disk.fs_used / disk.fs_size) * 100
+
+
+def count_vms_by_state(coordinator: UnraidDataUpdateCoordinator, state: VmState) -> int:
+    """Count VMs in a specific state."""
+    return sum(1 for vm in coordinator.data["vms"].values() if vm.state == state)
+
+
+def count_vms_total(coordinator: UnraidDataUpdateCoordinator) -> int:
+    """Count total VMs."""
+    return len(coordinator.data["vms"])
+
+
+def count_docker_by_state(coordinator: UnraidDataUpdateCoordinator, state: DockerState) -> int:
+    """Count Docker containers in a specific state."""
+    return sum(1 for container in coordinator.data["docker"].values() if container.state == state)
+
+
+def count_docker_total(coordinator: UnraidDataUpdateCoordinator) -> int:
+    """Count total Docker containers."""
+    return len(coordinator.data["docker"])
 
 
 SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
@@ -289,6 +309,60 @@ DOCKER_SENSOR_DESCRIPTIONS: tuple[UnraidDockerSensorEntityDescription, ...] = (
     ),
 )
 
+VM_AGGREGATE_SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
+    UnraidSensorEntityDescription(
+        key="vms_total",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=count_vms_total,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="vms_running",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_vms_by_state(coordinator, VmState.RUNNING),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="vms_stopped",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_vms_by_state(coordinator, VmState.STOPPED),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="vms_paused",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_vms_by_state(coordinator, VmState.PAUSED),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
+DOCKER_AGGREGATE_SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
+    UnraidSensorEntityDescription(
+        key="docker_total",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=count_docker_total,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="docker_running",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_docker_by_state(coordinator, DockerState.RUNNING),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="docker_stopped",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_docker_by_state(coordinator, DockerState.STOPPED),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    UnraidSensorEntityDescription(
+        key="docker_paused",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda coordinator: count_docker_by_state(coordinator, DockerState.PAUSED),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,  # noqa: ARG001
@@ -297,6 +371,21 @@ async def async_setup_entry(
 ) -> None:
     """Set up this integration using config entry."""
     entities = [UnraidSensor(description, config_entry) for description in SENSOR_DESCRIPTIONS]
+
+    # Add VM aggregate sensors if VM monitoring is enabled
+    if config_entry.options.get(CONF_VMS, False):
+        entities.extend(
+            UnraidSensor(description, config_entry)
+            for description in VM_AGGREGATE_SENSOR_DESCRIPTIONS
+        )
+
+    # Add Docker aggregate sensors if Docker monitoring is enabled
+    if config_entry.options.get(CONF_DOCKER, False):
+        entities.extend(
+            UnraidSensor(description, config_entry)
+            for description in DOCKER_AGGREGATE_SENSOR_DESCRIPTIONS
+        )
+
     async_add_entites(entities)
 
     @callback
