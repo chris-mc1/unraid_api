@@ -143,11 +143,11 @@
             }
         },
         "switch": {
-            "vm_power": {
-                "name": "{vm_name} Power"
+            "vm": {
+                "name": "{vm_name}"
             },
-            "docker_power": {
-                "name": "{container_name} Power"
+            "docker": {
+                "name": "{container_name}"
             }
         },
         "button": {

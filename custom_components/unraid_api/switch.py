@@ -58,8 +58,8 @@ class UnraidVmSwitch(CoordinatorEntity[UnraidDataUpdateCoordinator], SwitchEntit
     ) -> None:
         super().__init__(config_entry.runtime_data.coordinator)
         self.vm_id = vm_id
-        self._attr_unique_id = f"{config_entry.entry_id}-vm_power-{self.vm_id}"
-        self._attr_translation_key = "vm_power"
+        self._attr_unique_id = f"{config_entry.entry_id}-vm-{self.vm_id}"
+        self._attr_translation_key = "vm"
         self._attr_translation_placeholders = {
             "vm_name": self.coordinator.data["vms"][self.vm_id].name
         }
@@ -82,10 +82,6 @@ class UnraidVmSwitch(CoordinatorEntity[UnraidDataUpdateCoordinator], SwitchEntit
             vm = self.coordinator.data["vms"][self.vm_id]
             return {
                 "state": vm.state.value,
-                "cpu_count": vm.cpu_count,
-                "memory": vm.memory,
-                "autostart": vm.autostart,
-                "description": vm.description,
             }
         except (KeyError, AttributeError):
             return None
@@ -111,8 +107,8 @@ class UnraidDockerSwitch(CoordinatorEntity[UnraidDataUpdateCoordinator], SwitchE
     ) -> None:
         super().__init__(config_entry.runtime_data.coordinator)
         self.container_id = container_id
-        self._attr_unique_id = f"{config_entry.entry_id}-docker_power-{self.container_id}"
-        self._attr_translation_key = "docker_power"
+        self._attr_unique_id = f"{config_entry.entry_id}-docker-{self.container_id}"
+        self._attr_translation_key = "docker"
         self._attr_translation_placeholders = {
             "container_name": self.coordinator.data["docker"][self.container_id].name
         }
