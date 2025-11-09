@@ -20,12 +20,6 @@
                 "data": {
                     "api_key": "API key"
                 }
-            },
-            "reconfigure": {
-                "data": {
-                    "shares": "Monitor shares",
-                    "drives": "Monitor disks"
-                }
             }
         },
         "error": {
@@ -134,6 +128,16 @@
         },
         "auth_failed": {
             "message": "Authentication failed {error_msg}"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "shares": "Monitor shares",
+                    "drives": "Monitor disks"
+                }
+            }
         }
     }
 }
