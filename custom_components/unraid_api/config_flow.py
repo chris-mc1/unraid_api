@@ -6,7 +6,12 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
-from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from aiohttp import (
+    ClientConnectionError,
+    ClientConnectorSSLError,
+    ContentTypeError,
+    InvalidUrlClientError,
+)
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWithReload
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.core import callback
@@ -77,7 +82,7 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         except ClientConnectorSSLError:
             _LOGGER.exception("SSL error")
             self.errors = {"base": "ssl_error"}
-        except (ClientConnectionError, TimeoutError):
+        except (ClientConnectionError, TimeoutError, ContentTypeError):
             _LOGGER.exception("Connection error")
             self.errors = {"base": "cannot_connect"}
         except UnraidAuthError:
@@ -87,6 +92,8 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("GraphQL Error response: %s", exc.response)
             self.errors = {"base": "error_response"}
             self.description_placeholders["error_msg"] = exc.args[0]
+        except InvalidUrlClientError:
+            self.errors = {"base": "invalid_url"}
         except IncompatibleApiError as exc:
             _LOGGER.exception("Incompatible API, %s < %s", exc.version, exc.min_version)
             self.errors = {"base": "api_incompatible"}
