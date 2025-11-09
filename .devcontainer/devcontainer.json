@@ -42,6 +42,11 @@
     },
     "remoteUser": "root",
     "runArgs": [
-        "--memory=4g"
-    ]
+        "--memory=4g",
+        "--env-file",
+        "./devcontainer.env"
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    }
 }
