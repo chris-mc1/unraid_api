@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWithReload
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import BooleanSelector
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
@@ -55,6 +56,14 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         self.description_placeholders = {}
         self.title = ""
         self.reauth_entry: UnraidConfigEntry = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,  # noqa: ARG004
+    ) -> UnraidOptionsFlow:
+        """Create the options flow."""
+        return UnraidOptionsFlow()
 
     async def validate_config(self) -> None:
         try:
@@ -148,17 +157,17 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             )
         return self.async_create_entry(title=self.title, data=data, options=options)
 
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        self.reauth_entry = self._get_reconfigure_entry()
+
+class UnraidOptionsFlow(OptionsFlowWithReload):
+    """Unraid Options Flow."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Manage the OpenEMS options."""
         if user_input is not None:
-            return await self.async_step_create_entry(options=user_input)
+            return self.async_create_entry(data=user_input)
+
         schema = self.add_suggested_values_to_schema(
             OPTIONS_SCHEMA,
-            self.reauth_entry.options,
+            self.config_entry.options,
         )
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=schema,
-        )
+        return self.async_show_form(step_id="init", data_schema=schema)
