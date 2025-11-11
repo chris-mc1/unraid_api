@@ -14,13 +14,22 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 
 ## Prerequisites
 
-- Install the [Unraid Connect Plugin](https://docs.unraid.net/connect/) on your Unraid server
-- Enable the [developer mode](https://docs.unraid.net/API/cli/#developer-mode)
-- Create an [API Key](https://docs.unraid.net/API/how-to-use-the-api/#creating-an-api-key) with role: "admin" and permissions:
+- Unraid v7.2 or later
+- Create an [API Key](https://docs.unraid.net/API/how-to-use-the-api/#managing-api-keys) with this Template:
 
-  - array: read
-  - info: read
-  - shares: read
+  ```txt
+  ?name=Homeassistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%3Aread_any&description=Unraid+API+Homeassistant+integration
+  ```
+
+  or set permissions manully:
+  - Resources:
+    - Info
+    - Servers
+    - Array
+    - Disk
+    - Share
+
+  - Actions: Read (All)
 
 ## Setup
 
@@ -43,6 +52,7 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 - State of the Array ("Stopped", "Started", ...)
 - Percentage of used space on the Array
 - Percentage of used RAM
+- CPU utilization
 
 - When "Monitor Shares" enabled:
 
@@ -52,6 +62,7 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 
   - State of the Disk
   - Disk Temperature (Temperature is unknown for spun down disk)
+  - Disk spinning
   - Percentage of used space on the Disk
 
 ## Remove integration
