@@ -78,12 +78,16 @@ async def async_setup_entry(
             translation_placeholders={"min_version": exc.min_version, "version": exc.version},
         ) from exc
 
-    device_info = DeviceInfo(
-        identifiers={(DOMAIN, config_entry.entry_id)},
-        sw_version=server_info.unraid_version,
-        name=server_info.name,
-        configuration_url=server_info.localurl,
-    )
+    # Only include configuration_url if localurl is valid
+    device_info_kwargs = {
+        "identifiers": {(DOMAIN, config_entry.entry_id)},
+        "sw_version": server_info.unraid_version,
+        "name": server_info.name,
+    }
+    if server_info.localurl and "://" in server_info.localurl:
+        device_info_kwargs["configuration_url"] = server_info.localurl
+
+    device_info = DeviceInfo(**device_info_kwargs)
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
     await coordinator.async_config_entry_first_refresh()
 
