@@ -78,6 +78,14 @@ async def async_setup_entry(
             translation_placeholders={"min_version": exc.min_version, "version": exc.version},
         ) from exc
 
+    # Log the localurl value for debugging
+    _LOGGER.debug(
+        "Server info: name=%s, version=%s, localurl='%s'",
+        server_info.name,
+        server_info.unraid_version,
+        server_info.localurl,
+    )
+
     # Only include configuration_url if localurl is valid
     device_info_kwargs = {
         "identifiers": {(DOMAIN, config_entry.entry_id)},
@@ -85,7 +93,13 @@ async def async_setup_entry(
         "name": server_info.name,
     }
     if server_info.localurl and "://" in server_info.localurl:
+        _LOGGER.debug("Adding configuration_url: %s", server_info.localurl)
         device_info_kwargs["configuration_url"] = server_info.localurl
+    else:
+        _LOGGER.warning(
+            "Invalid or empty localurl from Unraid API: '%s'. Device will not have configuration_url",
+            server_info.localurl,
+        )
 
     device_info = DeviceInfo(**device_info_kwargs)
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
