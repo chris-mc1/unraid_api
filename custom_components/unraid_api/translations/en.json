@@ -2,40 +2,41 @@
     "config": {
         "step": {
             "user": {
-                "title": "Add new Unraid Server",
+                "title": "Add new Unraid server",
                 "data": {
-                    "host": "Unraid WebUI Url",
-                    "api_key": "API Key",
+                    "host": "Unraid WebUI URL",
+                    "api_key": "API key",
                     "verify_ssl": "Verify SSL certificate"
                 }
             },
             "options": {
                 "data": {
-                    "shares": "Monitor Shares",
-                    "drives": "Monitor Disks",
+                    "shares": "Monitor shares",
+                    "drives": "Monitor disks",
                     "vms": "Monitor VMs",
-                    "docker": "Monitor Docker Containers"
+                    "docker": "Monitor Docker containers"
                 }
             },
             "reauth_key": {
                 "title": "Add new Unraid Server",
                 "data": {
-                    "api_key": "API Key"
+                    "api_key": "API key"
                 }
             },
             "reconfigure": {
                 "data": {
-                    "shares": "Monitor Shares",
-                    "drives": "Monitor Disks",
+                    "shares": "Monitor shares",
+                    "drives": "Monitor disks",
                     "vms": "Monitor VMs",
-                    "docker": "Monitor Docker Containers"
+                    "docker": "Monitor Docker containers"
                 }
             }
         },
         "error": {
-            "ssl_error": "SSL Error when connecting to Unraid",
+            "ssl_error": "SSL error when connecting to Unraid",
             "cannot_connect": "Failed to connect to Unraid",
-            "error_response": "Recived an Error response from Unraid: {error_msg}",
+            "invalid_url": "Invalid URL",
+            "error_response": "Unraid: {error_msg}",
             "api_incompatible": "Incompatible API version (Current: {version}, minimum: {min_version})",
             "auth_failed": "Authentication failed"
         },
@@ -47,7 +48,7 @@
     "entity": {
         "sensor": {
             "array_state": {
-                "name": "Array State",
+                "name": "Array state",
                 "state": {
                     "started": "Started",
                     "stopped": "Stopped",
@@ -66,10 +67,10 @@
                 "name": "Array usage"
             },
             "array_free": {
-                "name": "Array Free space"
+                "name": "Array free space"
             },
             "array_used": {
-                "name": "Array Used space"
+                "name": "Array used space"
             },
             "ram_usage": {
                 "name": "RAM usage"
@@ -87,7 +88,7 @@
                 "name": "{disk_name} Status",
                 "state": {
                     "disk_np": "No disk",
-                    "disk_ok": "Ok",
+                    "disk_ok": "OK",
                     "disk_np_missing": "Missing",
                     "disk_invalid": "Invalid",
                     "disk_wrong": "Wrong disk",
@@ -98,19 +99,19 @@
                 }
             },
             "disk_temp": {
-                "name": "{disk_name} Temperature"
+                "name": "{disk_name} temperature"
             },
             "disk_free": {
-                "name": "{disk_name} Free space"
+                "name": "{disk_name} free space"
             },
             "disk_used": {
-                "name": "{disk_name} Used space"
+                "name": "{disk_name} used space"
             },
             "disk_usage": {
                 "name": "{disk_name} usage"
             },
             "share_free": {
-                "name": "{share_name} Free space"
+                "name": "{share_name} free space"
             },
             "vm_state": {
                 "name": "{vm_name} State",
@@ -207,6 +208,18 @@
         },
         "auth_failed": {
             "message": "Authentication failed {error_msg}"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "shares": "Monitor shares",
+                    "drives": "Monitor disks",
+                    "vms": "Monitor VMs",
+                    "docker": "Monitor Docker containers"
+                }
+            }
         }
     }
 }

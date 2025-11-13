@@ -14,15 +14,24 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 
 ## Prerequisites
 
-- Install the [Unraid Connect Plugin](https://docs.unraid.net/connect/) on your Unraid server
-- Enable the [developer mode](https://docs.unraid.net/API/cli/#developer-mode)
-- Create an [API Key](https://docs.unraid.net/API/how-to-use-the-api/#creating-an-api-key) with role: "admin" and permissions:
+- Unraid v7.2 or later
+- Create an [API Key](https://docs.unraid.net/API/how-to-use-the-api/#managing-api-keys) with this Template:
 
-  - array: read
-  - info: read
-  - shares: read
-  - vms: read, write (for VM management - planned)
-  - docker: read, write (for Docker management - planned)
+  ```txt
+  ?name=Homeassistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%2Bvms%2Bdocker%3Aread_any%2Cwrite_any&description=Unraid+API+Homeassistant+integration
+  ```
+
+  or set permissions manually:
+  - Resources:
+    - Info
+    - Servers
+    - Array
+    - Disk
+    - Share
+    - VMs (for VM management)
+    - Docker (for Docker management)
+
+  - Actions: Read (All), Write (for VM/Docker control)
 
 ## Setup
 
@@ -39,8 +48,8 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 - API Key: API Key for the Unraid API
 - Monitor Shares: Create Entities for each Network Share
 - Monitor Disks: Create Entities for each Disk
-- Monitor VMs: Create Entities for each Virtual Machine (planned)
-- Monitor Docker: Create Entities for each Docker container (planned)
+- Monitor VMs: Create Entities for each Virtual Machine
+- Monitor Docker: Create Entities for each Docker container
 
 ## Entities
 
@@ -63,6 +72,7 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 
   - State of the Disk
   - Disk Temperature (Temperature is unknown for spun down disk)
+  - Disk spinning
   - Percentage of used space on the Disk
   - Spinning status (binary sensor)
 
@@ -72,6 +82,12 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 
   **Sensors:**
   - VM State (running, stopped, paused, etc.)
+
+  **Aggregate Sensors:**
+  - VMs Total
+  - VMs Running
+  - VMs Stopped
+  - VMs Paused
 
   **Controls:**
   - Power switch (start/stop VM)
@@ -87,6 +103,12 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
   **Sensors:**
   - Container State (running, stopped, paused, exited, etc.)
   - Extra attributes: image, autostart
+
+  **Aggregate Sensors:**
+  - Containers Total
+  - Containers Running
+  - Containers Stopped
+  - Containers Paused
 
   **Controls:**
   - Power switch (start/stop container)

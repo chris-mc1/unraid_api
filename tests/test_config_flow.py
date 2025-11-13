@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 async def test_user_init(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_get_api_client: AsyncMock,
+    mock_get_api_client: AsyncMock,  # noqa: ARG001
 ) -> None:
     """Test config flow."""
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
@@ -209,7 +209,7 @@ async def test_user_connection_auth_failed(
 async def test_reauth(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_get_api_client: AsyncMock,
+    mock_get_api_client: AsyncMock,  # noqa: ARG001
 ) -> None:
     """Test a reauthentication flow."""
     mock_config = MockConfigEntry(
@@ -409,22 +409,22 @@ async def test_reauth_connection_auth_failed(
     mock_setup_entry.assert_not_awaited()
 
 
-async def _test_reconfigure(
+async def test_options(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_get_api_client: AsyncMock,
+    mock_get_api_client: AsyncMock,  # noqa: ARG001
 ) -> None:
     """Test Reconfigure flow."""
     entry = MockConfigEntry(domain=DOMAIN, data=MOCK_CONFIG_DATA, options=MOCK_OPTION_DATA)
     entry.add_to_hass(hass)
 
-    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "reconfigure"
+    assert result["step_id"] == "init"
     assert not result["errors"]
 
-    result = await hass.config_entries.flow.async_configure(
+    result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         user_input={CONF_SHARES: False, CONF_DRIVES: False},
     )
@@ -432,4 +432,5 @@ async def _test_reconfigure(
     assert entry.options[CONF_SHARES] is False
     assert entry.options[CONF_DRIVES] is False
 
+    await hass.async_block_till_done()
     mock_setup_entry.assert_awaited_once()

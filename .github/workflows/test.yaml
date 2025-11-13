@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ha-version: ["homeassistant==2024.10", "homeassistant==2025.10"]
+        ha-version: ["homeassistant==2025.8.*", "homeassistant==2025.10.*"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
@@ -19,7 +19,6 @@ jobs:
           python-version: "3.13.2"
       - run: |
           sudo pip install uv
-          sudo uv sync --no-install-project --prerelease=allow --no-dev --group test
-          sudo uv pip install --prerelease=allow homeassistant>=${{ matrix.ha-version }} pytest-homeassistant-custom-component
+          sudo uv sync --group test
       - run: |
-          sudo uv run pytest tests/
+          sudo uv run --with ${{ matrix.ha-version }} pytest tests/

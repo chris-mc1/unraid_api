@@ -31,7 +31,7 @@ class UnraidGraphQLError(Exception):
 
     def __init__(self, response: dict, *args: Any) -> None:
         self.response = response
-        error_msg = ", ".join(entry.get("message") for entry in response["errors"])
+        error_msg = ", ".join({entry.get("message") for entry in response["errors"]})
         super().__init__(error_msg, *args)
 
 

@@ -1,3 +1,5 @@
+"""GraphQL API responses for Tests."""
+
 from __future__ import annotations
 
 from awesomeversion import AwesomeVersion

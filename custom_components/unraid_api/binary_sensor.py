@@ -55,7 +55,7 @@ async def async_setup_entry(
 
     @callback
     def add_disk_callback(disk: Disk) -> None:
-        _LOGGER.debug("Adding new Disk: %s", disk.name)
+        _LOGGER.debug("Adding new disk: %s", disk.name)
         entities = [
             UnraidDiskBinarySensorEntity(description, config_entry, disk.id)
             for description in DISK_BINARY_SENSOR_DESCRIPTIONS

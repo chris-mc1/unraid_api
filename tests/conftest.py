@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from custom_components import unraid_api
 from custom_components.unraid_api import config_flow
-import pytest
 
 from .const import CLIENT_RESPONSES
 

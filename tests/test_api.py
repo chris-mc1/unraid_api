@@ -1,3 +1,5 @@
+"""API Client Tests."""
+
 from asyncio import AbstractEventLoop
 
 import pytest
