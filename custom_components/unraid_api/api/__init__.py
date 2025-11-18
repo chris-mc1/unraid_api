@@ -43,6 +43,10 @@ class IncompatibleApiError(Exception):
 def _import_client_class(
     api_version: AwesomeVersion,
 ) -> type[UnraidApiClient]:
+    if api_version >= AwesomeVersion("4.26.0"):
+        from custom_components.unraid_api.api.v4_26 import UnraidApiV426  # noqa: PLC0415
+
+        return UnraidApiV426
     if api_version >= AwesomeVersion("4.20.0"):
         from custom_components.unraid_api.api.v4_20 import UnraidApiV420  # noqa: PLC0415
 
@@ -65,6 +69,8 @@ _T = TypeVar("_T", bound=BaseModel)
 
 class UnraidApiClient:
     """Unraid GraphQL API Client."""
+
+    version: AwesomeVersion
 
     def __init__(self, host: str, api_key: str, session: ClientSession) -> None:
         self.host = host.rstrip("/")

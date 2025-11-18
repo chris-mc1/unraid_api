@@ -58,6 +58,8 @@ class Metrics:
     memory_available: int
     memory_percent_total: float
     cpu_percent_total: float
+    cpu_temp: float | None = None
+    cpu_power: float | None = None
 
 
 @dataclass

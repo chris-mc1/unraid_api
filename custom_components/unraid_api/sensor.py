@@ -5,13 +5,20 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from awesomeversion import AwesomeVersion
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfInformation, UnitOfTemperature
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfInformation,
+    UnitOfTemperature,
+    UnitOfPower,
+)
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -34,6 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 class UnraidSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
     """Description for Unraid Sensor Entity."""
 
+    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[UnraidDataUpdateCoordinator], StateType]
     extra_values_fn: Callable[[UnraidDataUpdateCoordinator], dict[str, Any]] | None = None
 
@@ -41,6 +49,7 @@ class UnraidSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=Tr
 class UnraidDiskSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
     """Description for Unraid Disk Sensor Entity."""
 
+    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Disk], StateType]
     extra_values_fn: Callable[[Disk], dict[str, Any]] | None = None
 
@@ -48,6 +57,7 @@ class UnraidDiskSensorEntityDescription(SensorEntityDescription, frozen_or_thawe
 class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
     """Description for Unraid Share Sensor Entity."""
 
+    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Share], StateType]
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
 
@@ -157,6 +167,20 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].cpu_percent_total,
     ),
+    UnraidSensorEntityDescription(
+        key="cpu_temp",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: coordinator.data["metrics"].cpu_temp,
+    ),
+    UnraidSensorEntityDescription(
+        key="cpu_power",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: coordinator.data["metrics"].cpu_power,
+    ),
 )
 
 DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
@@ -242,7 +266,11 @@ async def async_setup_entry(
     async_add_entites: AddEntitiesCallback,
 ) -> None:
     """Set up this integration using config entry."""
-    entities = [UnraidSensor(description, config_entry) for description in SENSOR_DESCRIPTIONS]
+    entities = [
+        UnraidSensor(description, config_entry)
+        for description in SENSOR_DESCRIPTIONS
+        if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
+    ]
     async_add_entites(entities)
 
     @callback
@@ -251,11 +279,14 @@ async def async_setup_entry(
         entities = [
             UnraidDiskSensor(description, config_entry, disk.id)
             for description in DISK_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
         if disk.type != DiskType.Parity:
             entities.extend(
                 UnraidDiskSensor(description, config_entry, disk.id)
                 for description in DISK_SENSOR_SPACE_DESCRIPTIONS
+                if description.min_version
+                <= config_entry.runtime_data.coordinator.api_client.version
             )
         async_add_entites(entities)
 
@@ -265,6 +296,7 @@ async def async_setup_entry(
         entities = [
             UnraidShareSensor(description, config_entry, share.name)
             for description in SHARE_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
         async_add_entites(entities)
 

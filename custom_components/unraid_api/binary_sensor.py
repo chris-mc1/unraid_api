@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from awesomeversion import AwesomeVersion
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -33,6 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 class UnraidDiskBinarySensorEntityDescription(BinarySensorEntityDescription, frozen_or_thawed=True):
     """Description for Unraid Binary Sensor Entity."""
 
+    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Disk], StateType]
     extra_values_fn: Callable[[Disk], dict[str, Any]] | None = None
 
@@ -59,6 +61,7 @@ async def async_setup_entry(
         entities = [
             UnraidDiskBinarySensorEntity(description, config_entry, disk.id)
             for description in DISK_BINARY_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
         async_add_entites(entities)
 

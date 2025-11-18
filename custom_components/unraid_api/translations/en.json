@@ -74,6 +74,12 @@
             "cpu_utilization": {
                 "name": "CPU utilization"
             },
+            "cpu_temp": {
+                "name": "CPU temperature"
+            },
+            "cpu_power": {
+                "name": "CPU power"
+            },
             "disk_status": {
                 "name": "{disk_name} Status",
                 "state": {

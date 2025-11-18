@@ -25,6 +25,12 @@
             "cpu_utilization": {
                 "default": "mdi:chip"
             },
+            "cpu_temp": {
+                "default": "mdi:chip"
+            },
+            "cpu_power": {
+                "default": "mdi:chip"
+            },
             "disk_status": {
                 "default": "mdi:harddisk"
             },

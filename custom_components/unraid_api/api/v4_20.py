@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
 from custom_components.unraid_api.models import (
@@ -24,6 +25,8 @@ class UnraidApiV420(UnraidApiClient):
 
     Api version > 4.20
     """
+
+    version = AwesomeVersion("4.20.0")
 
     async def query_server_info(self) -> ServerInfo:
         response = await self.call_api(SERVER_INFO_QUERY, ServerInfoQuery)
