@@ -16,8 +16,8 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
-    UnitOfTemperature,
     UnitOfPower,
+    UnitOfTemperature,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
