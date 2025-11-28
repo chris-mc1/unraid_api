@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime  # noqa: TC003
 from enum import StrEnum
 
 
@@ -37,6 +38,15 @@ class ArrayState(StrEnum):  # noqa: D101
     TOO_MANY_MISSING_DISKS = "TOO_MANY_MISSING_DISKS"
     NEW_DISK_TOO_SMALL = "NEW_DISK_TOO_SMALL"
     NO_DATA_DISKS = "NO_DATA_DISKS"
+
+
+class ParityCheckStatus(StrEnum):  # noqa: D101
+    NEVER_RUN = "NEVER_RUN"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
 
 
 @dataclass
@@ -97,3 +107,9 @@ class Array:
     capacity_free: int
     capacity_used: int
     capacity_total: int
+    parity_check_status: ParityCheckStatus
+    parity_check_date: datetime
+    parity_check_duration: int
+    parity_check_speed: float
+    parity_check_errors: int | None
+    parity_check_progress: int

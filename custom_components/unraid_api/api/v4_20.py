@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
+
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
@@ -12,6 +14,7 @@ from custom_components.unraid_api.models import (
     DiskStatus,
     DiskType,
     Metrics,
+    ParityCheckStatus,
     ServerInfo,
     Share,
 )
@@ -118,6 +121,12 @@ class UnraidApiV420(UnraidApiClient):
             capacity_free=response.array.capacity.kilobytes.free,
             capacity_used=response.array.capacity.kilobytes.used,
             capacity_total=response.array.capacity.kilobytes.total,
+            parity_check_status=response.array.parity_check.status,
+            parity_check_date=response.array.parity_check.date,
+            parity_check_duration=response.array.parity_check.duration,
+            parity_check_speed=response.array.parity_check.speed,
+            parity_check_errors=response.array.parity_check.errors,
+            parity_check_progress=response.array.parity_check.progress,
         )
 
 
@@ -217,6 +226,14 @@ query Array {
         used
         total
       }
+    }
+    parityCheckStatus {
+      date
+      duration
+      speed
+      status
+      errors
+      progress
     }
   }
 }
@@ -319,6 +336,7 @@ class ArrayQuery(BaseModel):  # noqa: D101
 class _Array(BaseModel):
     state: ArrayState
     capacity: ArrayCapacity
+    parity_check: ParityCheck = Field(alias="parityCheckStatus")
 
 
 class ArrayCapacity(BaseModel):  # noqa: D101
@@ -329,3 +347,12 @@ class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
     free: int
     used: int
     total: int
+
+
+class ParityCheck(BaseModel):  # noqa: D101
+    date: datetime
+    duration: int
+    speed: float
+    status: ParityCheckStatus
+    errors: int | None
+    progress: int

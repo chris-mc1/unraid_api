@@ -1,6 +1,7 @@
 """API Client Tests."""
 
 from asyncio import AbstractEventLoop
+from datetime import UTC, datetime
 
 import pytest
 from custom_components.unraid_api.api import (
@@ -9,7 +10,7 @@ from custom_components.unraid_api.api import (
     get_api_client,
 )
 from custom_components.unraid_api.api.v4_20 import UnraidApiV420
-from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
+from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from .const import (
@@ -236,3 +237,12 @@ async def test_array(api_responses: dict, loop: AbstractEventLoop) -> None:
     assert array.capacity_free == 523094720
     assert array.capacity_used == 11474981430
     assert array.capacity_total == 11998076150
+
+    assert array.parity_check_status == ParityCheckStatus.COMPLETED
+    assert array.parity_check_date == datetime(
+        year=2025, month=9, day=27, hour=22, minute=0, second=1, tzinfo=UTC
+    )
+    assert array.parity_check_duration == 5982
+    assert array.parity_check_speed == 10
+    assert array.parity_check_errors is None
+    assert array.parity_check_progress == 0

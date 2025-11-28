@@ -50,11 +50,17 @@ async def async_setup_entry(
         server_info = await api_client.query_server_info()
     except ClientConnectorSSLError as exc:
         _LOGGER.debug("Init: SSL error: %s", str(exc))
-        raise ConfigEntryError(translation_domain=DOMAIN, translation_key="ssl_error") from exc
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="ssl_error",
+            translation_placeholders={"error": str(exc)},
+        ) from exc
     except (ClientConnectionError, TimeoutError) as exc:
         _LOGGER.debug("Init: Connection error: %s", str(exc))
         raise ConfigEntryNotReady(
-            translation_domain=DOMAIN, translation_key="cannot_connect"
+            translation_domain=DOMAIN,
+            translation_key="cannot_connect",
+            translation_placeholders={"error": str(exc)},
         ) from exc
     except UnraidAuthError as exc:
         _LOGGER.debug("Init: Auth failed")
