@@ -108,11 +108,51 @@
             },
             "share_free": {
                 "name": "{share_name} free space"
+            },
+            "parity_check_status": {
+                "name": "Parity check",
+                "state": {
+                    "never_run": "Never run",
+                    "running": "Running",
+                    "paused": "Paused",
+                    "completed": "Completed",
+                    "cancelled": "Cancelled",
+                    "failed": "Failed"
+                }
+            },
+            "parity_check_date": {
+                "name": "Parity check progress"
+            },
+            "parity_check_duration": {
+                "name": "Parity check duration"
+            },
+            "parity_check_speed": {
+                "name": "Parity check speed"
+            },
+            "parity_check_errors": {
+                "name": "Parity check errors"
+            },
+            "parity_check_progress": {
+                "name": "Parity check progress"
             }
         },
         "binary_sensor": {
             "disk_spinning": {
                 "name": "{disk_name} spinning"
+            }
+        },
+        "button": {
+            "parity_check_start": {
+                "name": "Start Parity check"
+            },
+            "parity_check_cancel": {
+                "name": "Cancel Parity check"
+            },
+            "parity_check_pause": {
+                "name": "Pause Parity check"
+            },
+            "parity_check_resume": {
+                "name": "Resume Parity check"
             }
         }
     },

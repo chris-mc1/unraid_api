@@ -15,9 +15,11 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
+    UnitOfDataRate,
     UnitOfInformation,
     UnitOfPower,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -180,6 +182,46 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].cpu_power,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_status",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_status.lower(),
+        options=[
+            "never_run",
+            "running",
+            "paused",
+            "completed",
+            "cancelled",
+            "failed",
+        ],
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_date",
+        device_class=SensorDeviceClass.DATE,
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_date,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_duration",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.HOURS,
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_duration,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_speed,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_errors",
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_errors,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_progress",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda coordinator: coordinator.data["array"].parity_check_progress,
     ),
 )
 

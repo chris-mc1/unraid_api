@@ -54,6 +54,20 @@
             "disk_spinning": {
                 "default": "mdi:harddisk"
             }
+        },
+        "button": {
+            "parity_check_start": {
+                "default": "mdi:play"
+            },
+            "parity_check_cancel": {
+                "default": "mdi:stop"
+            },
+            "parity_check_pause": {
+                "default": "mdi:pause"
+            },
+            "parity_check_resume": {
+                "default": "mdi:play"
+            }
         }
     }
 }
