@@ -81,7 +81,7 @@ class UnraidApiClient:
     async def call_api(
         self,
         query: str,
-        model: type[_T],
+        model: type[_T] | None,
         variables: dict[str, Any] | None = None,
     ) -> _T:
         response = await self.session.post(
@@ -102,7 +102,9 @@ class UnraidApiClient:
                 pass
             raise UnraidGraphQLError(response=result)
 
-        return model.model_validate(result["data"])
+        if model is not None:
+            return model.model_validate(result["data"])
+        return None
 
     async def query_api_version(self) -> AwesomeVersion:
         try:
@@ -129,6 +131,22 @@ class UnraidApiClient:
 
     @abstractmethod
     async def query_array(self) -> Array:
+        pass
+
+    @abstractmethod
+    async def start_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def cancel_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def pause_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def resume_parity_check(self) -> None:
         pass
 
 

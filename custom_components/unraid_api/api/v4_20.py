@@ -129,6 +129,18 @@ class UnraidApiV420(UnraidApiClient):
             parity_check_progress=response.array.parity_check.progress,
         )
 
+    async def start_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_START, None)
+
+    async def cancel_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_CANCEL, None)
+
+    async def pause_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_PAUSE, None)
+
+    async def resume_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_RESUME, None)
+
 
 ## Queries
 
@@ -238,6 +250,38 @@ query Array {
   }
 }
 
+"""
+
+PARITY_CHECK_START = """
+mutation ParityCheck {
+  parityCheck {
+    start(correct: true)
+  }
+}
+"""
+
+PARITY_CHECK_CANCEL = """
+mutation ParityCheck {
+  parityCheck {
+    cancel
+  }
+}
+"""
+
+PARITY_CHECK_PAUSE = """
+mutation ParityCheck {
+  parityCheck {
+    pause
+  }
+}
+"""
+
+PARITY_CHECK_RESUME = """
+mutation ParityCheck {
+  parityCheck {
+    resume
+  }
+}
 """
 
 ## Api Models
