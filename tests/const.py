@@ -16,38 +16,57 @@ from custom_components.unraid_api.models import (
 )
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 
-MOCK_CONFIG_DATA = {CONF_HOST: "http://1.2.3.4", CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False}
+DEFAULT_HOST = "http://1.2.3.4"
+MOCK_CONFIG_DATA = {CONF_HOST: DEFAULT_HOST, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False}
 MOCK_OPTION_DATA = {CONF_SHARES: True, CONF_DRIVES: True}
 
 API_VERSION_RESPONSE_INCOMPATIBLE = {
-    "data": {
-        "info": {
-            "versions": {
-                "core": {
-                    "api": "4.10",
-                }
-            },
-        },
-    }
-}
-
-API_VERSION_RESPONSE_UNAUTHENTICATED = {
-    "errors": [
-        {
-            "message": "No user session found",
-            "locations": [{"line": 2, "column": 3}],
-            "path": ["info"],
-            "extensions": {
-                "code": "UNAUTHENTICATED",
-                "originalError": {
-                    "message": "No user session found",
-                    "error": "Unauthorized",
-                    "statusCode": 401,
+    "ApiVersion": {
+        "data": {
+            "info": {
+                "versions": {
+                    "core": {
+                        "api": "4.10",
+                    }
                 },
             },
         }
-    ],
-    "data": None,
+    }
+}
+
+RESPONSE_UNAUTHENTICATED = {
+    "__all__": {
+        "errors": [
+            {
+                "message": "API key validation failed",
+                "locations": [{"line": 3, "column": 3}],
+                "path": ["info"],
+                "extensions": {
+                    "code": "UNAUTHENTICATED",
+                    "originalError": {
+                        "message": "API key validation failed",
+                        "error": "Unauthorized",
+                        "statusCode": 401,
+                    },
+                },
+            }
+        ],
+        "data": None,
+    }
+}
+
+RESPONSE_ERROR = {
+    "__all__": {
+        "errors": [
+            {
+                "message": "Internal Server error",
+                "locations": [{"line": 18, "column": 3}],
+                "path": ["info"],
+                "extensions": {"code": "INTERNAL_SERVER_ERROR"},
+            }
+        ],
+        "data": None,
+    }
 }
 CLIENT_RESPONSES = [
     {

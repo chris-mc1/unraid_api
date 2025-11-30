@@ -129,12 +129,12 @@ ARRAY_RESPONSE_V4_20 = {
 
 API_RESPONSES = [
     {
-        "api_version": API_VERSION_RESPONSE_V4_20,
-        "server_info": SERVER_INFO_RESPONSE_V4_20,
-        "metrics": METRICS_RESPONSE_V4_20,
-        "shares": SHARES_RESPONSE_V4_20,
-        "disks": DISKS_RESPONSE_V4_20,
-        "array": ARRAY_RESPONSE_V4_20,
+        "ApiVersion": API_VERSION_RESPONSE_V4_20,
+        "ServerInfo": SERVER_INFO_RESPONSE_V4_20,
+        "Metrics": METRICS_RESPONSE_V4_20,
+        "Shares": SHARES_RESPONSE_V4_20,
+        "Disks": DISKS_RESPONSE_V4_20,
+        "Array": ARRAY_RESPONSE_V4_20,
         "version": AwesomeVersion("4.20.0"),
     }
 ]
