@@ -1,6 +1,6 @@
 """API Client Tests."""
 
-from asyncio import AbstractEventLoop
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 import pytest
@@ -9,85 +9,62 @@ from custom_components.unraid_api.api import (
     UnraidApiClient,
     get_api_client,
 )
-from custom_components.unraid_api.api.v4_20 import UnraidApiV420
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from .const import (
-    API_VERSION_RESPONSE_INCOMPATIBLE,
-)
-from .graphql_responses import API_RESPONSES, API_VERSION_RESPONSE_V4_20
+from tests.conftest import GraphqlServerMocker
 
-
-@pytest.mark.parametrize(
-    ("api_response", "api_client_type"), [(API_VERSION_RESPONSE_V4_20, UnraidApiV420)]
-)
-async def test_get_api_client(
-    api_response: dict, api_client_type: type[UnraidApiClient], loop: AbstractEventLoop
-) -> None:
-    """Test get_api_client."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_response,
-        headers={"Content-Type": "application/json"},
-    )
-
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
-
-    assert type(api_client) is api_client_type
-
-
-async def test_get_api_client_incompatible(loop: AbstractEventLoop) -> None:
-    """Test get_api_client with incompatible version."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=API_VERSION_RESPONSE_INCOMPATIBLE,
-        headers={"Content-Type": "application/json"},
-    )
-
-    with pytest.raises(IncompatibleApiError):
-        await get_api_client("http://1.2.3.4", "test_key", session)
+from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
-async def test_api_version(api_responses: dict, loop: AbstractEventLoop) -> None:
-    """Test querying api version."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
+async def test_get_api_client(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test get_api_client."""
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = UnraidApiClient("http://1.2.3.4", "test_key", session)
+    assert api_client.version == api_responses.version
+
+
+async def test_get_api_client_incompatible(
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test get_api_client with incompatible version."""
+    mocker = await mock_graphql_server(GraphqlResponses410)
+    session = mocker.create_session()
+
+    with pytest.raises(IncompatibleApiError):
+        await get_api_client("", "test_key", session)
+
+
+@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+async def test_api_version(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test querying api version."""
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = UnraidApiClient("", "test_key", session)
+
     api_version = await api_client.query_api_version()
 
-    assert api_version == api_responses["version"]
+    assert api_version == api_responses.version
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_server_info(api_responses: dict, loop: AbstractEventLoop) -> None:
+async def test_server_info(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
     """Test querying server info."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.clear_requests()
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["server_info"],
-        headers={"Content-Type": "application/json"},
-    )
     server_info = await api_client.query_server_info()
 
     assert server_info.localurl == "http://1.2.3.4"
@@ -96,24 +73,15 @@ async def test_server_info(api_responses: dict, loop: AbstractEventLoop) -> None
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_metrics(api_responses: dict, loop: AbstractEventLoop) -> None:
+async def test_metrics(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
     """Test querying metrics."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
-
-    aioclient_mock.clear_requests()
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["metrics"],
-        headers={"Content-Type": "application/json"},
-    )
     metrics = await api_client.query_metrics()
 
     assert metrics.memory_free == 415510528
@@ -125,24 +93,15 @@ async def test_metrics(api_responses: dict, loop: AbstractEventLoop) -> None:
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_shares(api_responses: dict, loop: AbstractEventLoop) -> None:
+async def test_shares(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
     """Test querying share info."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
-
-    aioclient_mock.clear_requests()
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["shares"],
-        headers={"Content-Type": "application/json"},
-    )
     shares = await api_client.query_shares()
 
     assert shares[0].name == "Share_1"
@@ -161,24 +120,15 @@ async def test_shares(api_responses: dict, loop: AbstractEventLoop) -> None:
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_disks(api_responses: dict, loop: AbstractEventLoop) -> None:
+async def test_disks(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
     """Test querying disk info."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
-
-    aioclient_mock.clear_requests()
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["disks"],
-        headers={"Content-Type": "application/json"},
-    )
     disks = await api_client.query_disks()
 
     assert disks[0].name == "disk1"
@@ -213,24 +163,15 @@ async def test_disks(api_responses: dict, loop: AbstractEventLoop) -> None:
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_array(api_responses: dict, loop: AbstractEventLoop) -> None:
+async def test_array(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
     """Test querying array info."""
-    aioclient_mock = AiohttpClientMocker()
-    session = aioclient_mock.create_session(loop)
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client("", "test_key", session)
 
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["api_version"],
-        headers={"Content-Type": "application/json"},
-    )
-    api_client = await get_api_client("http://1.2.3.4", "test_key", session)
-
-    aioclient_mock.clear_requests()
-    aioclient_mock.post(
-        "http://1.2.3.4/graphql",
-        json=api_responses["array"],
-        headers={"Content-Type": "application/json"},
-    )
     array = await api_client.query_array()
 
     assert array.state == ArrayState.STARTED
