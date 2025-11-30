@@ -10,13 +10,12 @@ from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from custom_components.unraid_api.api import UnraidApiClient
 from homeassistant.config_entries import ConfigEntryState
 
-from tests.graphql_responses import API_RESPONSES
-
 from . import add_config_entry, setup_config_entry
-from .const import (
-    API_VERSION_RESPONSE_INCOMPATIBLE,
-    RESPONSE_ERROR,
-    RESPONSE_UNAUTHENTICATED,
+from .graphql_responses import (
+    API_RESPONSES,
+    API_RESPONSES_LATEST,
+    GraphqlResponses,
+    GraphqlResponses410,
 )
 
 if TYPE_CHECKING:
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
 async def test_load_unload_entry(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     hass: HomeAssistant,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
@@ -84,7 +83,8 @@ async def test_load_failure_2(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test setup and unload failure."""
-    mocker = await mock_graphql_server(RESPONSE_UNAUTHENTICATED)
+    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
+    mocker.responses.is_unauthenticated = True
     entry = add_config_entry(hass, mocker)
 
     await hass.config_entries.async_setup(entry.entry_id)
@@ -93,14 +93,14 @@ async def test_load_failure_2(
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
 
-    mocker.response_set = RESPONSE_ERROR
+    mocker.responses.all_error = True
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
 
-    mocker.response_set = API_VERSION_RESPONSE_INCOMPATIBLE
+    mocker.responses = GraphqlResponses410()
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 

@@ -12,13 +12,12 @@ from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
 
 from tests.conftest import GraphqlServerMocker
 
-from .const import API_VERSION_RESPONSE_INCOMPATIBLE
-from .graphql_responses import API_RESPONSES
+from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
 async def test_get_api_client(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test get_api_client."""
@@ -26,14 +25,14 @@ async def test_get_api_client(
     session = mocker.create_session()
     api_client = await get_api_client("", "test_key", session)
 
-    assert api_client.version == api_responses["version"]
+    assert api_client.version == api_responses.version
 
 
 async def test_get_api_client_incompatible(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test get_api_client with incompatible version."""
-    mocker = await mock_graphql_server(API_VERSION_RESPONSE_INCOMPATIBLE)
+    mocker = await mock_graphql_server(GraphqlResponses410)
     session = mocker.create_session()
 
     with pytest.raises(IncompatibleApiError):
@@ -42,7 +41,7 @@ async def test_get_api_client_incompatible(
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
 async def test_api_version(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying api version."""
@@ -52,12 +51,12 @@ async def test_api_version(
 
     api_version = await api_client.query_api_version()
 
-    assert api_version == api_responses["version"]
+    assert api_version == api_responses.version
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
 async def test_server_info(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying server info."""
@@ -74,7 +73,7 @@ async def test_server_info(
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
 async def test_metrics(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying metrics."""
@@ -94,7 +93,7 @@ async def test_metrics(
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
 async def test_shares(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying share info."""
@@ -121,7 +120,7 @@ async def test_shares(
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
 async def test_disks(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying disk info."""
@@ -164,7 +163,7 @@ async def test_disks(
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
 async def test_array(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test querying array info."""

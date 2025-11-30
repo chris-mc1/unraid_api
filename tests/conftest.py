@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from homeassistant.core import Event, HomeAssistant
     from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
+    from .graphql_responses import GraphqlResponses
+
 pytest_plugins = ["aiohttp.pytest_plugin"]
 
 
@@ -32,19 +34,17 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:  
 class GraphqlServerMocker:
     """Mock GraphQL client requests."""
 
-    def __init__(self, response_set: dict) -> None:
-        self.response_set = response_set
+    def __init__(self, response_set: type[GraphqlResponses]) -> None:
+        self.responses = response_set()
         self.app = web.Application()
         self.app.add_routes([web.post("/graphql", self.handler)])
         self.server = TestServer(self.app)
 
     async def handler(self, request: web.Request) -> web.Response:
-        if "__all__" in self.response_set:
-            return web.json_response(data=self.response_set["__all__"])
         body = await request.json()
         query: str = body["query"]
         query = query.split(" ")[1]
-        response = self.response_set[query]
+        response = self.responses.get_response(query)
         return web.json_response(data=response)
 
     def create_session(self, loop: AbstractEventLoop | None = None) -> TestClient:

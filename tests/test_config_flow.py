@@ -13,13 +13,12 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
 
-from tests import add_config_entry
-from tests.graphql_responses import API_RESPONSES
-
-from .const import (
-    API_VERSION_RESPONSE_INCOMPATIBLE,
-    RESPONSE_ERROR,
-    RESPONSE_UNAUTHENTICATED,
+from . import add_config_entry
+from .graphql_responses import (
+    API_RESPONSES,
+    API_RESPONSES_LATEST,
+    GraphqlResponses,
+    GraphqlResponses410,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +31,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
 async def test_user_init(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
@@ -76,7 +75,8 @@ async def test_user_error_response(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test a config flow flow with GraphQL error response."""
-    mocker = await mock_graphql_server(RESPONSE_ERROR)
+    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
+    mocker.responses.all_error = True
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -166,7 +166,7 @@ async def test_user_connection_incompatible(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test a config flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(API_VERSION_RESPONSE_INCOMPATIBLE)
+    mocker = await mock_graphql_server(GraphqlResponses410)
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
@@ -187,7 +187,8 @@ async def test_user_connection_auth_failed(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test a config flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(RESPONSE_UNAUTHENTICATED)
+    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
+    mocker.responses.is_unauthenticated = True
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -207,7 +208,7 @@ async def test_user_connection_auth_failed(
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
 async def test_reauth(
-    api_responses: dict,
+    api_responses: GraphqlResponses,
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
@@ -242,7 +243,8 @@ async def test_reauth_error_response(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test a reauthentication flow with GraphQL error response."""
-    mocker = await mock_graphql_server(RESPONSE_ERROR)
+    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
+    mocker.responses.all_error = True
     mock_config = add_config_entry(hass, mocker)
 
     result = await mock_config.start_reauth_flow(hass)
@@ -356,7 +358,8 @@ async def test_reauth_connection_auth_failed(
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
     """Test a reauthentication flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(RESPONSE_UNAUTHENTICATED)
+    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
+    mocker.responses.is_unauthenticated = True
     mock_config = add_config_entry(hass, mocker)
 
     result = await mock_config.start_reauth_flow(hass)
