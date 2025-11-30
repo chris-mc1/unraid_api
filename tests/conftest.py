@@ -39,6 +39,7 @@ class GraphqlServerMocker:
         self.app = web.Application()
         self.app.add_routes([web.post("/graphql", self.handler)])
         self.server = TestServer(self.app)
+        self.clients = set[GraphqlServerMocker]()
 
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -49,10 +50,17 @@ class GraphqlServerMocker:
 
     def create_session(self, loop: AbstractEventLoop | None = None) -> TestClient:
         """Create a ClientSession that is bound to this mocker."""
-        return TestClient(self.server, loop=loop)
+        client = TestClient(self.server, loop=loop)
+        self.clients.add(client)
+        return client
 
     async def start_server(self) -> None:
         await self.server.start_server()
+
+    async def close(self) -> None:
+        while self.clients:
+            await self.clients.pop().close()
+        await self.server.close()
 
     @property
     def host(self) -> str:
@@ -90,13 +98,18 @@ async def mock_graphql_server(
     socket_enabled: None,  # noqa: ARG001
 ) -> AsyncGenerator[Callable[..., Awaitable[GraphqlServerMocker]]]:
     """Graphql Server."""
+    mocks = set[GraphqlServerMocker]()
 
     async def go(response_set: dict) -> GraphqlServerMocker:
         mocker = GraphqlServerMocker(response_set)
+        mocks.add(mocker)
         await mocker.start_server()
         return mocker
 
     yield go
+
+    while mocks:
+        await mocks.pop().close()
 
 
 @contextmanager
