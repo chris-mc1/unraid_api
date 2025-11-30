@@ -169,7 +169,7 @@ class UnraidOptionsFlow(OptionsFlowWithReload):
     """Unraid Options Flow."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Manage the OpenEMS options."""
+        """Manage the Unraid options."""
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
