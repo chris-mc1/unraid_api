@@ -121,7 +121,7 @@
                 }
             },
             "parity_check_date": {
-                "name": "Parity check progress"
+                "name": "Parity check date"
             },
             "parity_check_duration": {
                 "name": "Parity check duration"
