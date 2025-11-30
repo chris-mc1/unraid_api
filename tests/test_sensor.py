@@ -181,3 +181,39 @@ async def test_share_sensors_disabled(
 
     state = hass.states.get("sensor.test_server_share_2_free_space")
     assert state is None
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+async def test_parity_check_sensors(
+    api_responses: GraphqlResponses,
+    hass: HomeAssistant,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test parity check sensor entities."""
+    mocker = await mock_graphql_server(api_responses)
+    assert await setup_config_entry(hass, mocker)
+
+    # parity_check_status
+    state = hass.states.get("sensor.test_server_parity_check")
+    assert state.state == "completed"
+
+    # parity_check_date
+    state = hass.states.get("sensor.test_server_parity_check_date")
+    assert state.state == "2025-09-27T22:00:01+00:00"
+
+    # parity_check_duration
+    state = hass.states.get("sensor.test_server_parity_check_duration")
+    assert state.state == "1.66166666666667"
+
+    # parity_check_speed
+    state = hass.states.get("sensor.test_server_parity_check_speed")
+    assert state.state == "10.0"
+
+    # parity_check_errors
+    state = hass.states.get("sensor.test_server_parity_check_errors")
+    assert state.state == "unknown"
+
+    # parity_check_progress
+    state = hass.states.get("sensor.test_server_parity_check_progress")
+    assert state.state == "0"
