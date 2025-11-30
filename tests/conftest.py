@@ -68,6 +68,23 @@ def mock_setup_entry() -> Generator[AsyncMock]:
         yield mock_setup_entry
 
 
+# From https://github.com/home-assistant/core/blob/6357067f0f427abd995697aaa84fa9ed3e126aef/tests/components/conftest.py#L85
+@pytest.fixture
+def entity_registry_enabled_by_default() -> Generator[None]:
+    """Test fixture that ensures all entities are enabled in the registry."""
+    with (
+        patch(
+            "homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
+            return_value=True,
+        ),
+        patch(
+            "homeassistant.components.device_tracker.config_entry.ScannerEntity.entity_registry_enabled_default",
+            return_value=True,
+        ),
+    ):
+        yield
+
+
 @pytest_asyncio.fixture
 async def mock_graphql_server(
     socket_enabled: None,  # noqa: ARG001
