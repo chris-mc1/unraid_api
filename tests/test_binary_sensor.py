@@ -35,7 +35,7 @@ async def test_main_binary_sensor(
     state = hass.states.get("binary_sensor.test_server_disk1_spinning")
     assert state.state == "on"
 
-    state = hass.states.get("binary_sensor.test_server_disk1_spinning")
+    state = hass.states.get("binary_sensor.test_server_cache_spinning")
     assert state.state == "on"
 
 
@@ -54,5 +54,5 @@ async def test_disk_sensors_disabled(
     state = hass.states.get("binary_sensor.test_server_disk1_spinning")
     assert state is None
 
-    state = hass.states.get("binary_sensor.test_server_disk1_spinning")
+    state = hass.states.get("binary_sensor.test_server_cache_spinning")
     assert state is None

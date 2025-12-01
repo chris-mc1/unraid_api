@@ -114,9 +114,6 @@
                     "disk_new": "New disk"
                 }
             },
-            "disk_temp": {
-                "name": "{disk_name} temperature"
-            },
             "disk_free": {
                 "name": "{disk_name} free space"
             },
@@ -125,6 +122,9 @@
             },
             "disk_usage": {
                 "name": "{disk_name} usage"
+            },
+            "disk_temp": {
+                "name": "{disk_name} temperature"
             },
             "share_free": {
                 "name": "{share_name} free space"

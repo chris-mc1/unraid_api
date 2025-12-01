@@ -24,8 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 class UnraidVMSwitchEntityDescription(SwitchEntityDescription):
     """Describes Unraid VM switch entity."""
 
-    icon_on: str = "mdi:server"
-    icon_off: str = "mdi:server-off"
+    icon_on: str = "mdi:desktop-tower"
+    icon_off: str = "mdi:desktop-tower"
 
 
 @dataclass(frozen=True, kw_only=True)

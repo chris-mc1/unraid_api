@@ -255,9 +255,9 @@ DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
     ),
     UnraidDiskSensorEntityDescription(
         key="disk_temp",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
         value_fn=lambda disk: disk.temp,
     ),
 )
@@ -269,6 +269,11 @@ DISK_SENSOR_SPACE_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = 
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=calc_disk_usage_percentage,
+        extra_values_fn=lambda disk: {
+            "free": disk.fs_free,
+            "used": disk.fs_used,
+            "total": disk.fs_size,
+        },
     ),
     UnraidDiskSensorEntityDescription(
         key="disk_free",

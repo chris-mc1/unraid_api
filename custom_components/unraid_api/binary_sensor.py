@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -42,7 +41,6 @@ class UnraidDiskBinarySensorEntityDescription(BinarySensorEntityDescription, fro
 DISK_BINARY_SENSOR_DESCRIPTIONS: tuple[UnraidDiskBinarySensorEntityDescription, ...] = (
     UnraidDiskBinarySensorEntityDescription(
         key="disk_spinning",
-        device_class=BinarySensorDeviceClass.MOVING,
         value_fn=lambda disk: disk.is_spinning,
     ),
 )

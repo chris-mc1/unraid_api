@@ -2,16 +2,16 @@
     "entity": {
         "sensor": {
             "array_state": {
-                "default": "mdi:database"
+                "default": "mdi:harddisk"
             },
             "array_usage": {
-                "default": "mdi:database"
+                "default": "mdi:harddisk"
             },
             "array_free": {
-                "default": "mdi:database"
+                "default": "mdi:harddisk"
             },
             "array_used": {
-                "default": "mdi:database"
+                "default": "mdi:harddisk"
             },
             "ram_usage": {
                 "default": "mdi:memory"
@@ -23,18 +23,15 @@
                 "default": "mdi:memory"
             },
             "cpu_utilization": {
-                "default": "mdi:chip"
+                "default": "mdi:cpu-64-bit"
             },
             "cpu_temp": {
-                "default": "mdi:chip"
+                "default": "mdi:thermometer"
             },
             "cpu_power": {
-                "default": "mdi:chip"
+                "default": "mdi:power"
             },
             "disk_status": {
-                "default": "mdi:harddisk"
-            },
-            "disk_temp": {
                 "default": "mdi:harddisk"
             },
             "disk_free": {
@@ -46,13 +43,36 @@
             "disk_usage": {
                 "default": "mdi:harddisk"
             },
+            "disk_temp": {
+                "default": "mdi:thermometer"
+            },
             "share_free": {
                 "default": "mdi:folder-network"
+            },
+            "uptime": {
+                "default": "mdi:clock-outline"
+            },
+            "ups_battery": {
+                "default": "mdi:battery"
+            },
+            "ups_load": {
+                "default": "mdi:battery"
+            },
+            "ups_runtime": {
+                "default": "mdi:battery"
             }
         },
         "binary_sensor": {
             "disk_spinning": {
-                "default": "mdi:harddisk"
+                "default": "mdi:rotate-3d-variant"
+            }
+        },
+        "switch": {
+            "vm": {
+                "default": "mdi:desktop-tower"
+            },
+            "docker_container": {
+                "default": "mdi:docker"
             }
         }
     }
