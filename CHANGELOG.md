@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - UPS Battery (percentage)
   - UPS Load (percentage)
   - UPS Runtime (minutes remaining)
-- **SSL redirect auto-detection**: Automatically follows HTTP→HTTPS redirects during setup, supporting Unraid's myunraid.net SSL proxy
+- **SSL redirect auto-detection** (fixes [#3](https://github.com/chris-mc1/unraid_api/issues/3), [#13](https://github.com/chris-mc1/unraid_api/issues/13), [#18](https://github.com/chris-mc1/unraid_api/issues/18)): Automatically follows HTTP→HTTPS redirects during setup, supporting Unraid's myunraid.net SSL proxy
 - **Improved translations**: Enhanced sensor descriptions and field help text in config flow
 
 ### Changed
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- HTTP connections now properly redirect to HTTPS when server uses SSL proxy
+- HTTP connections now properly redirect to HTTPS when server uses SSL proxy (fixes [#3](https://github.com/chris-mc1/unraid_api/issues/3), [#13](https://github.com/chris-mc1/unraid_api/issues/13), [#18](https://github.com/chris-mc1/unraid_api/issues/18))
 - SSL certificate errors now automatically retry without verification for self-signed certificates
 - Fixed connection issues when entering just IP address without protocol prefix
 - Fixed VM GraphQL query to only request available fields (id, name, state)
