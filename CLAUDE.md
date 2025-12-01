@@ -11,10 +11,10 @@ This is a Home Assistant custom integration for monitoring Unraid servers via th
 ### Initial Setup
 ```bash
 # Run setup script to install all dependencies with latest versions
-bash script/setup.sh
+./scripts/setup.sh
 
 # This will:
-# - Install/upgrade uv package manager
+# - Install uv package manager if not present
 # - Create virtual environment in .venv/
 # - Install latest Home Assistant and all dependencies
 # - Install test dependencies
@@ -37,13 +37,12 @@ pytest tests/test_sensor.py::test_sensor_entity
 
 ### Code Quality
 ```bash
-# Format and lint code
-ruff check custom_components/
-ruff format custom_components/
+# Format and lint all code (uses uv run internally)
+./scripts/lint.sh
 
-# Format and lint tests
-ruff check tests/
-ruff format tests/
+# Or run manually:
+uv run ruff format .
+uv run ruff check . --fix
 ```
 
 ### Development Environment
@@ -52,7 +51,7 @@ The project uses Python 3.13.2+ and includes a dev container configuration. Depe
 **Important**: Dependencies are configured to always use the latest stable versions:
 - Home Assistant: Always installs latest stable release (currently 2025.11.3)
 - All other dependencies: Use latest compatible versions without pinning
-- The `script/setup.sh` uses `uv sync --upgrade` to ensure latest versions on every setup
+- Run `./scripts/setup.sh` to install dependencies
 
 ### Running Home Assistant for Testing
 

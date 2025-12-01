@@ -1,7 +1,7 @@
 {
     "name": "unraid_hass",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
-    "postCreateCommand": "bash script/setup.sh",
+    "postCreateCommand": "./scripts/setup.sh",
     "forwardPorts": [
         8123
     ],

@@ -5,14 +5,14 @@ Home Assistant custom integration for monitoring Unraid servers via GraphQL API.
 ## Development Setup
 
 ```bash
-bash script/setup.sh    # Install deps with uv (always uses latest versions)
-bash script/develop.sh  # Start HA instance for debugging (port 8123)
-bash script/lint.sh     # Format and lint (ruff format + ruff check --fix)
-pytest                   # Run tests
+./scripts/setup.sh    # Install deps with uv (always uses latest versions)
+./scripts/develop.sh  # Start HA instance for debugging (port 8123)
+./scripts/lint.sh     # Format and lint (ruff format + ruff check --fix)
+pytest                 # Run tests
 pytest --cov=custom_components.unraid_api --cov-report=term-missing  # With coverage
 ```
 
-**Critical**: Zero tolerance for linting errors. Always run `bash script/lint.sh` before committing. Check HA logs in the terminal running `develop.sh` for integration issues.
+**Critical**: Zero tolerance for linting errors. Always run `./scripts/lint.sh` before committing. Check HA logs in the terminal running `develop.sh` for integration issues.
 
 ## Architecture
 
