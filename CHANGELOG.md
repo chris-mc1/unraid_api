@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **VM control**: Switch entities for starting and stopping virtual machines with state monitoring (running, shutoff, paused, etc.)
+- **VM control** (fixes [#23](https://github.com/chris-mc1/unraid_api/issues/23)): Switch entities for starting and stopping virtual machines with state monitoring (running, shutoff, paused, etc.)
   - Entity naming: `switch.{server}_vm_{vm_name}` with friendly name "VM {name}"
   - Supports start/stop actions via Home Assistant UI or automations
-- **Docker control**: Switch entities for starting and stopping Docker containers with state monitoring
+- **Docker control** (fixes [#22](https://github.com/chris-mc1/unraid_api/issues/22), [#23](https://github.com/chris-mc1/unraid_api/issues/23)): Switch entities for starting and stopping Docker containers with state monitoring
   - Entity naming: `switch.{server}_container_{container_name}` with friendly name "Container {name}"
   - Supports start/stop actions via Home Assistant UI or automations
 - **Uptime sensor**: Shows server uptime in human-readable format (e.g., "8 days, 1 hour, 28 minutes") with raw `uptime_since` timestamp attribute
-- **UPS monitoring** (GitHub issue #31): Three new sensors for UPS-connected servers:
+- **UPS monitoring** (fixes [#31](https://github.com/chris-mc1/unraid_api/issues/31)): Three new sensors for UPS-connected servers:
   - UPS Battery (percentage)
   - UPS Load (percentage)
   - UPS Runtime (minutes remaining)
@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SSL certificate errors now automatically retry without verification for self-signed certificates
 - Fixed connection issues when entering just IP address without protocol prefix
 - Fixed VM GraphQL query to only request available fields (id, name, state)
+- Fixed `ZeroDivisionError` in array usage percentage calculation when array is stopped (total capacity is 0)
 
 ## [1.0.0] - Initial Release
 

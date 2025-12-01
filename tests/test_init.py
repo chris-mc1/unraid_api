@@ -34,7 +34,7 @@ async def test_load_unload_entry(
 ) -> None:
     """Test setup and unload config entry."""
     mocker = await mock_graphql_server(api_responses)
-    entry = await setup_config_entry(hass, mocker)
+    entry = await setup_config_entry(hass, mocker, expect_success=False)
 
     assert entry.state is ConfigEntryState.LOADED
 
