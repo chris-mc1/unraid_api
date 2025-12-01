@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydantic_core import ValidationError
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share
+    from .models import Array, Disk, Metrics, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class UnraidServerData(TypedDict):  # noqa: D101
     array: Array | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
+    ups_devices: dict[str, UpsDevice]
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -39,6 +41,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     known_disks: set[str]
     known_shares: set[str]
+    known_ups_devices: set[str]
     config_entry: UnraidConfigEntry
 
     def __init__(
@@ -54,10 +57,12 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.api_client = api_client
         self.disk_callbacks: set[Callable[[Disk], None]] = set()
         self.share_callbacks: set[Callable[[Share], None]] = set()
+        self.ups_callbacks: set[Callable[[UpsDevice], None]] = set()
 
     async def _async_setup(self) -> None:
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
+        self.known_ups_devices: set[str] = set()
 
     async def _async_update_data(self) -> UnraidServerData:
         data = UnraidServerData()
@@ -69,6 +74,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                     tg.create_task(self._update_disks(data))
                 if self.config_entry.options[CONF_SHARES]:
                     tg.create_task(self._update_shares(data))
+                if self.api_client.version >= AwesomeVersion("4.26.0"):
+                    tg.create_task(self._update_ups(data))
 
         except* ClientConnectorSSLError as exc:
             _LOGGER.debug("Update: SSL error: %s", str(exc))
@@ -152,6 +159,21 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 self._do_callback(self.share_callbacks, share)
         data["shares"] = shares
 
+    async def _update_ups(self, data: UnraidServerData) -> None:
+        devices = {}
+        try:
+            query_response = await self.api_client.query_ups()
+
+            for device in query_response:
+                devices[device.id] = device
+                if device.id not in self.known_ups_devices:
+                    self.known_ups_devices.add(device.id)
+                    self._do_callback(self.ups_callbacks, device)
+        except UnraidGraphQLError:
+            pass
+
+        data["ups_devices"] = devices
+
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
         for disk_id in self.known_disks:
@@ -161,6 +183,11 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.share_callbacks.add(callback)
         for share_name in self.known_shares:
             self._do_callback([callback], self.data["shares"][share_name])
+
+    def subscribe_ups(self, callback: Callable[[UpsDevice], None]) -> None:
+        self.ups_callbacks.add(callback)
+        for ups_id in self.known_ups_devices:
+            self._do_callback([callback], self.data["ups_devices"][ups_id])
 
     def _do_callback(
         self, callbacks: set[Callable[..., None]], *args: tuple[Any], **kwargs: dict[Any]

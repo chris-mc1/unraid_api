@@ -15,16 +15,19 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
+    UnitOfElectricPotential,
     UnitOfInformation,
     UnitOfPower,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_DRIVES, CONF_SHARES
+from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from .coordinator import UnraidDataUpdateCoordinator
-from .models import Disk, DiskType, Share
+from .models import Disk, DiskType, Share, UpsDevice
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -60,6 +63,13 @@ class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thaw
     min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Share], StateType]
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
+
+
+class UnraidUpsSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+    """Description for Unraid UPS Sensor Entity."""
+
+    min_version: AwesomeVersion = AwesomeVersion("4.26.0")
+    value_fn: Callable[[UpsDevice], StateType]
 
 
 def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> StateType:
@@ -245,7 +255,6 @@ DISK_SENSOR_SPACE_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = 
 SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
     UnraidShareSensorEntityDescription(
         key="share_free",
-        name="free space",
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
@@ -258,6 +267,47 @@ SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
             "allocator": share.allocator,
             "floor": share.floor,
         },
+    ),
+)
+
+UPS_SENSOR_DESCRIPTIONS: tuple[UnraidUpsSensorEntityDescription, ...] = (
+    UnraidUpsSensorEntityDescription(
+        key="ups_status",
+        value_fn=lambda device: device.status,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_level",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda device: device.battery_level,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_runtime",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=lambda device: device.battery_runtime,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_health",
+        value_fn=lambda device: device.battery_health,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_load",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda device: device.load_percentage,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_input_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        value_fn=lambda device: device.input_voltage,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_output_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        value_fn=lambda device: device.output_voltage,
     ),
 )
 
@@ -302,10 +352,27 @@ async def async_setup_entry(
         ]
         async_add_entites(entities)
 
+    @callback
+    def add_ups_callback(device: UpsDevice) -> None:
+        _LOGGER.debug("Adding new UPS: %s", device.name)
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_{device.id}")},
+            name=device.name,
+            model=device.model,
+            via_device=(DOMAIN, config_entry.entry_id),
+        )
+        entities = [
+            UnraidUpsSensor(description, config_entry, device.id, device_info)
+            for description in UPS_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
+        ]
+        async_add_entites(entities)
+
     if config_entry.options[CONF_DRIVES]:
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
     if config_entry.options[CONF_SHARES]:
         config_entry.runtime_data.coordinator.subscribe_shares(add_share_callback)
+    config_entry.runtime_data.coordinator.subscribe_ups(add_ups_callback)
 
 
 class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
@@ -425,3 +492,41 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         except (KeyError, AttributeError):
             return None
         return None
+
+
+class UnraidUpsSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+    """Sensor for Unraid UPS."""
+
+    entity_description: UnraidUpsSensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        description: UnraidUpsSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+        ups_id: str,
+        device_info: DeviceInfo,
+    ) -> None:
+        super().__init__(config_entry.runtime_data.coordinator)
+        self.ups_id = ups_id
+        self.entity_description = description
+        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.ups_id}"
+        self._attr_translation_key = description.key
+        self._attr_available = False
+        self._attr_device_info = device_info
+
+    @property
+    def native_value(self) -> StateType:
+        try:
+            return self.entity_description.value_fn(
+                self.coordinator.data["ups_devices"][self.ups_id]
+            )
+        except (KeyError, AttributeError):
+            return None
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.ups_id in self.coordinator.data["ups_devices"]
+            and self.coordinator.last_update_success
+        )
