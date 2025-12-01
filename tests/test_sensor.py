@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from awesomeversion import AwesomeVersion
 
 from . import setup_config_entry
 from .const import MOCK_OPTION_DATA_DISABLED
@@ -67,6 +68,22 @@ async def test_main_sensors(
     # cpu_utilization
     state = hass.states.get("sensor.test_server_cpu_utilization")
     assert state.state == "5.1"
+
+    if api_responses.version >= AwesomeVersion("4.26.0"):
+        # cpu_temp
+        state = hass.states.get("sensor.test_server_cpu_temperature")
+        assert state.state == "31.0"
+        # cpu_power
+        state = hass.states.get("sensor.test_server_cpu_power")
+        assert state.state == "2.8"
+    else:
+        # cpu_temp
+        state = hass.states.get("sensor.test_server_cpu_temperature")
+        assert state is None
+
+        # cpu_power
+        state = hass.states.get("sensor.test_server_cpu_power")
+        assert state is None
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")

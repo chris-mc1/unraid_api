@@ -173,6 +173,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].cpu_temp,
+        min_version=AwesomeVersion("4.26.0"),
     ),
     UnraidSensorEntityDescription(
         key="cpu_power",
@@ -180,6 +181,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].cpu_power,
+        min_version=AwesomeVersion("4.26.0"),
     ),
 )
 

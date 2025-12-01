@@ -203,15 +203,40 @@ class GraphqlResponses420(GraphqlResponses):
         }
 
 
+class GraphqlResponses426(GraphqlResponses420):
+    """Graphql Responses for version 4.26."""
+
+    version = AwesomeVersion("4.26.0")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.26.0"}}}}}
+        self.metrics = {
+            "data": {
+                "metrics": {
+                    "memory": {
+                        "free": 415510528,
+                        "total": 16646950912,
+                        "active": 12746354688,
+                        "percentTotal": 76.56870471583932,
+                        "available": 3900596224,
+                    },
+                    "cpu": {"percentTotal": 5.1},
+                },
+                "info": {"cpu": {"packages": {"power": [2.8], "temp": [31]}}},
+            }
+        }
+
+
 class GraphqlResponses410(GraphqlResponses420):
     """Graphql Responses for version 4.10 (Incompatible)."""
 
     version = AwesomeVersion("4.10.0")
 
     def __init__(self) -> None:
-        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.10"}}}}}
+        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.10.0"}}}}}
 
 
-API_RESPONSES = [GraphqlResponses420]
+API_RESPONSES = [GraphqlResponses420, GraphqlResponses426]
 
 API_RESPONSES_LATEST = API_RESPONSES[-1]
