@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share
+    from .models import Array, Disk, Metrics, Share, UPSDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ class UnraidServerData(TypedDict):  # noqa: D101
     array: Array | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
+    ups_devices: list[UPSDevice]
+    uptime_since: str | None  # ISO timestamp when system started
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -65,6 +67,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._update_metrics(data))
                 tg.create_task(self._update_array(data))
+                tg.create_task(self._update_ups(data))
+                tg.create_task(self._update_uptime(data))
                 if self.config_entry.options[CONF_DRIVES]:
                     tg.create_task(self._update_disks(data))
                 if self.config_entry.options[CONF_SHARES]:
@@ -129,6 +133,18 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     async def _update_array(self, data: UnraidServerData) -> None:
         data["array"] = await self.api_client.query_array()
+
+    async def _update_ups(self, data: UnraidServerData) -> None:
+        try:
+            data["ups_devices"] = await self.api_client.query_ups_devices()
+        except UnraidGraphQLError:
+            # UPS might not be available on all systems
+            _LOGGER.debug("No UPS devices found or UPS query failed")
+            data["ups_devices"] = []
+
+    async def _update_uptime(self, data: UnraidServerData) -> None:
+        server_info = await self.api_client.query_server_info()
+        data["uptime_since"] = server_info.uptime
 
     async def _update_disks(self, data: UnraidServerData) -> None:
         disks = {}

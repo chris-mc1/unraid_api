@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -18,13 +20,14 @@ from homeassistant.const import (
     UnitOfInformation,
     UnitOfPower,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_DRIVES, CONF_SHARES
 from .coordinator import UnraidDataUpdateCoordinator
-from .models import Disk, DiskType, Share
+from .models import Disk, DiskType, Share, UPSDevice
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -62,6 +65,14 @@ class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thaw
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
 
 
+class UnraidUPSSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+    """Description for Unraid UPS Sensor Entity."""
+
+    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
+    value_fn: Callable[[UPSDevice], StateType]
+    extra_values_fn: Callable[[UPSDevice], dict[str, Any]] | None = None
+
+
 def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> StateType:
     """Calculate the array usage percentage."""
     used = coordinator.data["array"].capacity_used
@@ -74,6 +85,40 @@ def calc_disk_usage_percentage(disk: Disk) -> StateType:
     if disk.fs_used is None or disk.fs_size is None or disk.fs_size == 0:
         return None
     return (disk.fs_used / disk.fs_size) * 100
+
+
+def format_uptime(coordinator: UnraidDataUpdateCoordinator) -> str | None:
+    """Format uptime as human-readable string."""
+    uptime_since = coordinator.data.get("uptime_since")
+    if not uptime_since:
+        return None
+
+    try:
+        # Parse ISO timestamp
+        start_time = datetime.fromisoformat(uptime_since)
+        now = datetime.now(UTC)
+        delta = now - start_time
+        total_seconds = int(delta.total_seconds())
+
+        if total_seconds < 0:
+            return None
+
+        # Calculate components
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)
+
+        parts = []
+        if days > 0:
+            parts.append(f"{days} day{'s' if days != 1 else ''}")
+        if hours > 0:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        if minutes > 0 or not parts:
+            parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+
+        return ", ".join(parts)
+    except (ValueError, TypeError):
+        return None
 
 
 SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
@@ -181,6 +226,13 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].cpu_power,
     ),
+    UnraidSensorEntityDescription(
+        key="uptime",
+        value_fn=format_uptime,
+        extra_values_fn=lambda coordinator: {
+            "uptime_since": coordinator.data.get("uptime_since"),
+        },
+    ),
 )
 
 DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
@@ -260,6 +312,37 @@ SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
 )
 
 
+UPS_SENSOR_DESCRIPTIONS: tuple[UnraidUPSSensorEntityDescription, ...] = (
+    UnraidUPSSensorEntityDescription(
+        key="ups_battery",
+        translation_key="ups_battery",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        value_fn=lambda ups: ups.battery_charge,
+    ),
+    UnraidUPSSensorEntityDescription(
+        key="ups_load",
+        translation_key="ups_load",
+        device_class=SensorDeviceClass.POWER_FACTOR,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        value_fn=lambda ups: ups.load_percentage,
+    ),
+    UnraidUPSSensorEntityDescription(
+        key="ups_runtime",
+        translation_key="ups_runtime",
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_display_precision=0,
+        value_fn=lambda ups: ups.battery_runtime,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,  # noqa: ARG001
     config_entry: UnraidConfigEntry,
@@ -304,6 +387,17 @@ async def async_setup_entry(
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
     if config_entry.options[CONF_SHARES]:
         config_entry.runtime_data.coordinator.subscribe_shares(add_share_callback)
+
+    # Add UPS sensors if UPS devices are detected
+    coordinator = config_entry.runtime_data.coordinator
+    if coordinator.data["ups_devices"]:
+        _LOGGER.debug("Adding UPS sensors")
+        ups_entities: list[SensorEntity] = [
+            UnraidUPSSensor(description, config_entry)
+            for description in UPS_SENSOR_DESCRIPTIONS
+            if description.min_version <= coordinator.api_client.version
+        ]
+        async_add_entites(ups_entities)
 
 
 class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
@@ -423,3 +517,55 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         except (KeyError, AttributeError):
             return None
         return None
+
+
+class UnraidUPSSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+    """Sensor for Unraid UPS."""
+
+    entity_description: UnraidUPSSensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        description: UnraidUPSSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+    ) -> None:
+        super().__init__(config_entry.runtime_data.coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}"
+        self._attr_translation_key = description.translation_key
+        self._attr_device_info = config_entry.runtime_data.device_info
+
+    def _get_ups(self) -> UPSDevice | None:
+        """Get first UPS device from coordinator data."""
+        ups_devices = self.coordinator.data["ups_devices"]
+        return ups_devices[0] if ups_devices else None
+
+    @property
+    def native_value(self) -> StateType:
+        """Return sensor value."""
+        ups = self._get_ups()
+        if ups:
+            try:
+                return self.entity_description.value_fn(ups)
+            except (KeyError, AttributeError):
+                return None
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        ups = self._get_ups()
+        if not ups:
+            return None
+
+        attrs: dict[str, Any] = {
+            "ups_model": ups.model,
+            "ups_status": ups.status.value,
+        }
+
+        if self.entity_description.extra_values_fn:
+            with contextlib.suppress(KeyError, AttributeError):
+                attrs.update(self.entity_description.extra_values_fn(ups))
+
+        return attrs

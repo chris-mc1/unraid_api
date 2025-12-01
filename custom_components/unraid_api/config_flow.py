@@ -20,7 +20,13 @@ from homeassistant.helpers.selector import BooleanSelector
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
-from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
+from .api import (
+    IncompatibleApiError,
+    UnraidAuthError,
+    UnraidGraphQLError,
+    detect_ssl_redirect,
+    get_api_client,
+)
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 
 if TYPE_CHECKING:
@@ -72,6 +78,23 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def validate_config(self) -> None:
         try:
+            # First, check for SSL redirect (HTTP -> HTTPS)
+            # This handles Unraid servers that redirect to myunraid.net domains
+            session = async_get_clientsession(self.hass, verify_ssl=False)
+            resolved_url = await detect_ssl_redirect(self.data[CONF_HOST], session)
+
+            if resolved_url:
+                _LOGGER.info(
+                    "Detected SSL redirect from %s to %s",
+                    self.data[CONF_HOST],
+                    resolved_url,
+                )
+                self.data[CONF_HOST] = resolved_url
+                # When redirecting to HTTPS, default to not verifying SSL
+                # since self-signed certs or myunraid.net certs may not match IP
+                if self.data.get(CONF_VERIFY_SSL, True):
+                    self.data[CONF_VERIFY_SSL] = False
+
             api_client = await get_api_client(
                 self.data[CONF_HOST],
                 self.data[CONF_API_KEY],

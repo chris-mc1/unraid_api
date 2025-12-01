@@ -14,6 +14,8 @@ from custom_components.unraid_api.models import (
     Metrics,
     ServerInfo,
     Share,
+    UPSDevice,
+    UPSStatus,
 )
 
 from . import UnraidApiClient
@@ -34,6 +36,7 @@ class UnraidApiV420(UnraidApiClient):
             localurl=response.server.localurl,
             name=response.server.name,
             unraid_version=response.info.versions.core.unraid,
+            uptime=response.info.os.uptime if response.info.os else None,
         )
 
     async def query_metrics(self) -> Metrics:
@@ -120,6 +123,29 @@ class UnraidApiV420(UnraidApiClient):
             capacity_total=response.array.capacity.kilobytes.total,
         )
 
+    async def query_ups_devices(self) -> list[UPSDevice]:
+        """Query UPS devices from Unraid."""
+        response = await self.call_api(UPS_QUERY, UPSQuery)
+        return [
+            UPSDevice(
+                id=ups.id,
+                name=ups.name,
+                model=ups.model,
+                status=(
+                    UPSStatus(ups.status)
+                    if ups.status in UPSStatus.__members__
+                    else UPSStatus.ONLINE
+                ),
+                battery_charge=ups.battery.charge_level,
+                battery_runtime=ups.battery.estimated_runtime,
+                battery_health=ups.battery.health,
+                load_percentage=ups.power.load_percentage,
+                input_voltage=ups.power.input_voltage,
+                output_voltage=ups.power.output_voltage,
+            )
+            for ups in response.ups_devices
+        ]
+
 
 ## Queries
 
@@ -130,6 +156,9 @@ query ServerInfo {
     name
   }
   info {
+    os {
+      uptime
+    }
     versions {
       core {
         unraid
@@ -238,7 +267,12 @@ class Server(BaseModel):  # noqa: D101
 
 
 class Info(BaseModel):  # noqa: D101
+    os: InfoOs | None = None
     versions: InfoVersions
+
+
+class InfoOs(BaseModel):  # noqa: D101
+    uptime: str | None = None
 
 
 class InfoVersions(BaseModel):  # noqa: D101
@@ -329,3 +363,51 @@ class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
     free: int
     used: int
     total: int
+
+
+### UPS Devices
+UPS_QUERY = """
+query UPSDevices {
+  upsDevices {
+    id
+    name
+    model
+    status
+    battery {
+      chargeLevel
+      estimatedRuntime
+      health
+    }
+    power {
+      loadPercentage
+      inputVoltage
+      outputVoltage
+    }
+  }
+}
+"""
+
+
+class UPSQuery(BaseModel):  # noqa: D101
+    ups_devices: list[_UPSDevice] = Field(alias="upsDevices")
+
+
+class _UPSDevice(BaseModel):
+    id: str
+    name: str
+    model: str
+    status: str
+    battery: _UPSBattery
+    power: _UPSPower
+
+
+class _UPSBattery(BaseModel):
+    charge_level: int = Field(alias="chargeLevel")
+    estimated_runtime: int = Field(alias="estimatedRuntime")
+    health: str | None
+
+
+class _UPSPower(BaseModel):
+    load_percentage: int = Field(alias="loadPercentage")
+    input_voltage: float | None = Field(alias="inputVoltage")
+    output_voltage: float | None = Field(alias="outputVoltage")

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version:*)",
+      "Bash(cat:*)",
+      "Bash(docker pull:*)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)",
+      "Bash(docker run:*)",
+      "Bash(git add:*)",
+      "Bash(tree:*)",
+      "Bash(git reset:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker stop:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

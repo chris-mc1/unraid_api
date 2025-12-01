@@ -46,6 +46,7 @@ class ServerInfo:
     localurl: str
     name: str
     unraid_version: str
+    uptime: str | None = None  # ISO timestamp of when system started
 
 
 @dataclass
@@ -97,3 +98,26 @@ class Array:
     capacity_free: int
     capacity_used: int
     capacity_total: int
+
+
+class UPSStatus(StrEnum):  # noqa: D101
+    ONLINE = "ONLINE"
+    ONBATT = "ONBATT"
+    LOWBATT = "LOWBATT"
+    COMMLOST = "COMMLOST"
+
+
+@dataclass
+class UPSDevice:
+    """UPS Device."""
+
+    id: str
+    name: str
+    model: str
+    status: UPSStatus
+    battery_charge: int  # percentage 0-100
+    battery_runtime: int  # estimated runtime in minutes
+    battery_health: str | None
+    load_percentage: int  # load percentage 0-100
+    input_voltage: float | None
+    output_voltage: float | None

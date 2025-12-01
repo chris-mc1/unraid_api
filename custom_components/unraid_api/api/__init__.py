@@ -6,6 +6,7 @@ import asyncio
 import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, TypeVar
+from urllib.parse import urlparse
 
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, ValidationError
@@ -53,6 +54,44 @@ def _import_client_class(
         return UnraidApiV420
 
     raise IncompatibleApiError(version=api_version, min_version=AwesomeVersion("4.20.0"))
+
+
+async def detect_ssl_redirect(host: str, session: ClientSession) -> str | None:
+    """
+    Detect if HTTP redirects to HTTPS and return the resolved URL.
+
+    Returns the resolved URL if a redirect is detected, None otherwise.
+    This handles Unraid servers that redirect HTTP to HTTPS (often to myunraid.net domains).
+    """
+    parsed = urlparse(host)
+
+    # Only check for redirects if using HTTP
+    if parsed.scheme != "http":
+        return None
+
+    try:
+        # Make a HEAD request to check for redirects without following them
+        async with session.head(
+            f"{host}/graphql",
+            allow_redirects=False,
+            timeout=10,
+        ) as response:
+            if response.status in (301, 302, 303, 307, 308):
+                location = response.headers.get("Location")
+                if location and location.startswith("https://"):
+                    # Extract the base URL from the redirect location
+                    redirect_parsed = urlparse(location)
+                    resolved_url = f"{redirect_parsed.scheme}://{redirect_parsed.netloc}"
+                    _LOGGER.debug(
+                        "Detected SSL redirect from %s to %s",
+                        host,
+                        resolved_url,
+                    )
+                    return resolved_url
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("SSL redirect detection failed for %s", host)
+
+    return None
 
 
 async def get_api_client(host: str, api_key: str, session: ClientSession) -> UnraidApiClient:

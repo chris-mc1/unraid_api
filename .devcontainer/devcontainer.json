@@ -1,9 +1,7 @@
 {
     "name": "unraid_hass",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
-    "postCreateCommand": [
-        "script/setup.sh"
-    ],
+    "postCreateCommand": "bash script/setup.sh",
     "forwardPorts": [
         8123
     ],
@@ -42,9 +40,7 @@
     },
     "remoteUser": "root",
     "runArgs": [
-        "--memory=4g",
-        "--env-file",
-        "./devcontainer.env"
+        "--memory=4g"
     ],
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {}

@@ -2,37 +2,54 @@
     "config": {
         "step": {
             "user": {
-                "title": "Add new Unraid server",
+                "title": "Connect to Unraid server",
+                "description": "Enter the connection details for your Unraid server. You can find the API key in Unraid's web interface under Settings → Management Access → API.",
                 "data": {
-                    "host": "Unraid WebUI URL",
+                    "host": "Host",
                     "api_key": "API key",
                     "verify_ssl": "Verify SSL certificate"
+                },
+                "data_description": {
+                    "host": "The IP address or hostname of your Unraid server (e.g., 192.168.1.100 or unraid.local). SSL will be auto-detected.",
+                    "api_key": "The API key from your Unraid server. Find it in Settings → Management Access → API.",
+                    "verify_ssl": "Disable if using a self-signed certificate. This is automatically disabled when SSL redirect is detected."
                 }
             },
             "options": {
+                "title": "Configure monitoring",
+                "description": "Choose what to monitor on your Unraid server.",
                 "data": {
                     "shares": "Monitor shares",
                     "drives": "Monitor disks"
+                },
+                "data_description": {
+                    "shares": "Create sensors for each user share showing free space.",
+                    "drives": "Create sensors for each disk showing status, temperature, and usage."
                 }
             },
             "reauth_key": {
-                "title": "Add new Unraid Server",
+                "title": "Re-authenticate Unraid server",
+                "description": "Your API key is no longer valid. Please enter a new API key.",
                 "data": {
                     "api_key": "API key"
+                },
+                "data_description": {
+                    "api_key": "The new API key from your Unraid server. Find it in Settings → Management Access → API."
                 }
             }
         },
         "error": {
-            "ssl_error": "SSL error when connecting to Unraid",
-            "cannot_connect": "Failed to connect to Unraid",
-            "invalid_url": "Invalid URL",
-            "error_response": "Unraid: {error_msg}",
-            "api_incompatible": "Incompatible API version (Current: {version}, minimum: {min_version})",
-            "auth_failed": "Authentication failed"
+            "ssl_error": "SSL certificate verification failed. Try disabling 'Verify SSL certificate'.",
+            "cannot_connect": "Cannot connect to Unraid server. Check the host address and ensure the server is online.",
+            "invalid_url": "Invalid URL format. Enter the IP address or hostname (e.g., 192.168.1.100).",
+            "error_response": "Error from Unraid: {error_msg}",
+            "api_incompatible": "Unraid API version {version} is not supported. Minimum required: {min_version}",
+            "auth_failed": "Invalid API key. Please check your API key and try again."
         },
         "abort": {
-            "reauth_successful": "Re-authentication was successful",
-            "reconfigure_successful": "Re-configuration was successful"
+            "reauth_successful": "Re-authentication successful",
+            "reconfigure_successful": "Reconfiguration successful",
+            "already_configured": "This Unraid server is already configured"
         }
     },
     "entity": {
@@ -43,13 +60,13 @@
                     "started": "Started",
                     "stopped": "Stopped",
                     "new_array": "New disks",
-                    "recon_disk": "disk being reconstructed",
-                    "disable_disk": "Disk is disabled",
+                    "recon_disk": "Reconstructing disk",
+                    "disable_disk": "Disk disabled",
                     "swap_dsbl": "Disabled",
                     "invalid_expansion": "Invalid expansion",
                     "parity_not_biggest": "Parity not biggest",
                     "too_many_missing_disks": "Too many missing disks",
-                    "new_disk_too_small": "New disk to small",
+                    "new_disk_too_small": "New disk too small",
                     "no_data_disks": "No data disks"
                 }
             },
@@ -80,8 +97,11 @@
             "cpu_power": {
                 "name": "CPU power"
             },
+            "uptime": {
+                "name": "Uptime"
+            },
             "disk_status": {
-                "name": "{disk_name} Status",
+                "name": "{disk_name} status",
                 "state": {
                     "disk_np": "No disk",
                     "disk_ok": "OK",
@@ -108,6 +128,15 @@
             },
             "share_free": {
                 "name": "{share_name} free space"
+            },
+            "ups_battery": {
+                "name": "UPS battery"
+            },
+            "ups_load": {
+                "name": "UPS load"
+            },
+            "ups_runtime": {
+                "name": "UPS runtime"
             }
         },
         "binary_sensor": {
@@ -118,30 +147,36 @@
     },
     "exceptions": {
         "ssl_error": {
-            "message": "SSL Error when connecting to Unraid: {error}"
+            "message": "SSL error connecting to Unraid: {error}"
         },
         "cannot_connect": {
-            "message": "Failed to connect to Unraid: {error}"
+            "message": "Cannot connect to Unraid: {error}"
         },
         "error_response": {
-            "message": "Recived an Error response from Unraid: {error_msg}"
+            "message": "Error response from Unraid: {error_msg}"
         },
         "data_invalid": {
-            "message": "Recived invalid data from Unraid"
+            "message": "Received invalid data from Unraid"
         },
         "api_incompatible": {
-            "message": "Incompatible API version (Current: {version}, minimum: {min_version})"
+            "message": "Unraid API version {version} is not supported (minimum: {min_version})"
         },
         "auth_failed": {
-            "message": "Authentication failed {error_msg}"
+            "message": "Authentication failed: {error_msg}"
         }
     },
     "options": {
         "step": {
             "init": {
+                "title": "Configure monitoring",
+                "description": "Choose what to monitor on your Unraid server.",
                 "data": {
                     "shares": "Monitor shares",
                     "drives": "Monitor disks"
+                },
+                "data_description": {
+                    "shares": "Create sensors for each user share showing free space.",
+                    "drives": "Create sensors for each disk showing status, temperature, and usage."
                 }
             }
         }

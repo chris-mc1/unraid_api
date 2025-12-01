@@ -1,11 +1,14 @@
 """API Client Tests."""
 
 from collections.abc import Awaitable, Callable
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiohttp import ClientSession
 from custom_components.unraid_api.api import (
     IncompatibleApiError,
     UnraidApiClient,
+    detect_ssl_redirect,
     get_api_client,
 )
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
@@ -177,3 +180,57 @@ async def test_array(
     assert array.capacity_free == 523094720
     assert array.capacity_used == 11474981430
     assert array.capacity_total == 11998076150
+
+
+async def test_detect_ssl_redirect_with_redirect() -> None:
+    """Test SSL redirect detection when server redirects HTTP to HTTPS."""
+    mock_response = MagicMock()
+    mock_response.status = 302
+    mock_response.headers = {"Location": "https://myserver.myunraid.net/graphql"}
+
+    mock_session = MagicMock(spec=ClientSession)
+    mock_context = MagicMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+    mock_session.head = MagicMock(return_value=mock_context)
+
+    result = await detect_ssl_redirect("http://192.168.1.100", mock_session)
+
+    assert result == "https://myserver.myunraid.net"
+    mock_session.head.assert_called_once()
+
+
+async def test_detect_ssl_redirect_no_redirect() -> None:
+    """Test SSL redirect detection when server does not redirect."""
+    mock_response = MagicMock()
+    mock_response.status = 200
+
+    mock_session = MagicMock(spec=ClientSession)
+    mock_context = MagicMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+    mock_session.head = MagicMock(return_value=mock_context)
+
+    result = await detect_ssl_redirect("http://192.168.1.100", mock_session)
+
+    assert result is None
+
+
+async def test_detect_ssl_redirect_already_https() -> None:
+    """Test SSL redirect detection skips HTTPS URLs."""
+    mock_session = MagicMock(spec=ClientSession)
+
+    result = await detect_ssl_redirect("https://192.168.1.100", mock_session)
+
+    assert result is None
+    mock_session.head.assert_not_called()
+
+
+async def test_detect_ssl_redirect_handles_exception() -> None:
+    """Test SSL redirect detection handles exceptions gracefully."""
+    mock_session = MagicMock(spec=ClientSession)
+    mock_session.head = MagicMock(side_effect=Exception("Connection failed"))
+
+    result = await detect_ssl_redirect("http://192.168.1.100", mock_session)
+
+    assert result is None
