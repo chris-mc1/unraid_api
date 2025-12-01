@@ -20,10 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Cleaner sensor naming convention (e.g., "UPS Battery" instead of device model name)
+- Host field now accepts IP address or hostname without requiring `http://` prefix
 
 ### Fixed
 
 - HTTP connections now properly redirect to HTTPS when server uses SSL proxy
+- SSL certificate errors now automatically retry without verification for self-signed certificates
+- Fixed connection issues when entering just IP address without protocol prefix
 
 ## [1.0.0] - Initial Release
 

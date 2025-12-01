@@ -90,20 +90,36 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
                     resolved_url,
                 )
                 self.data[CONF_HOST] = resolved_url
-                # When redirecting to HTTPS, default to not verifying SSL
+                # When redirecting to HTTPS, disable SSL verification
                 # since self-signed certs or myunraid.net certs may not match IP
-                if self.data.get(CONF_VERIFY_SSL, True):
-                    self.data[CONF_VERIFY_SSL] = False
+                self.data[CONF_VERIFY_SSL] = False
 
-            api_client = await get_api_client(
-                self.data[CONF_HOST],
-                self.data[CONF_API_KEY],
-                async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
-            )
-            response = await api_client.query_server_info()
+            # Try to connect with current SSL settings
+            verify_ssl = self.data.get(CONF_VERIFY_SSL, True)
+            try:
+                api_client = await get_api_client(
+                    self.data[CONF_HOST],
+                    self.data[CONF_API_KEY],
+                    async_get_clientsession(self.hass, verify_ssl),
+                )
+                response = await api_client.query_server_info()
+            except ClientConnectorSSLError:
+                # SSL error - likely self-signed cert, retry without verification
+                if verify_ssl:
+                    _LOGGER.info("SSL verification failed, retrying without verification")
+                    self.data[CONF_VERIFY_SSL] = False
+                    api_client = await get_api_client(
+                        self.data[CONF_HOST],
+                        self.data[CONF_API_KEY],
+                        async_get_clientsession(self.hass, verify_ssl=False),
+                    )
+                    response = await api_client.query_server_info()
+                else:
+                    raise
             self.title = response.name
         except ClientConnectorSSLError:
             _LOGGER.exception("SSL error")
+            self.errors = {"base": "ssl_error"}
             self.errors = {"base": "ssl_error"}
         except (ClientConnectionError, TimeoutError, ContentTypeError):
             _LOGGER.exception("Connection error")
@@ -123,10 +139,18 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             self.description_placeholders["min_version"] = exc.min_version
             self.description_placeholders["version"] = exc.version
 
+    def _normalize_host(self, host: str) -> str:
+        """Normalize host input to include protocol."""
+        host = host.strip().rstrip("/")
+        # If no protocol specified, default to http (SSL redirect will handle https)
+        if not host.startswith(("http://", "https://")):
+            host = f"http://{host}"
+        return host
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
         if user_input is not None:
-            self.data[CONF_HOST] = user_input[CONF_HOST].rstrip("/")
+            self.data[CONF_HOST] = self._normalize_host(user_input[CONF_HOST])
             self.data[CONF_API_KEY] = user_input[CONF_API_KEY]
             self.data[CONF_VERIFY_SSL] = user_input[CONF_VERIFY_SSL]
             await self.validate_config()
