@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share, UPSDevice
+    from .models import Array, Disk, DockerContainer, Metrics, Share, UPSDevice, VirtualMachine
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ class UnraidServerData(TypedDict):  # noqa: D101
     shares: dict[str, Share]
     ups_devices: list[UPSDevice]
     uptime_since: str | None  # ISO timestamp when system started
+    vms: dict[str, VirtualMachine]
+    containers: dict[str, DockerContainer]
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -56,10 +58,14 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.api_client = api_client
         self.disk_callbacks: set[Callable[[Disk], None]] = set()
         self.share_callbacks: set[Callable[[Share], None]] = set()
+        self.vm_callbacks: set[Callable[[VirtualMachine], None]] = set()
+        self.container_callbacks: set[Callable[[DockerContainer], None]] = set()
 
     async def _async_setup(self) -> None:
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
+        self.known_vms: set[str] = set()
+        self.known_containers: set[str] = set()
 
     async def _async_update_data(self) -> UnraidServerData:
         data = UnraidServerData()
@@ -69,6 +75,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 tg.create_task(self._update_array(data))
                 tg.create_task(self._update_ups(data))
                 tg.create_task(self._update_uptime(data))
+                tg.create_task(self._update_vms(data))
+                tg.create_task(self._update_containers(data))
                 if self.config_entry.options[CONF_DRIVES]:
                     tg.create_task(self._update_disks(data))
                 if self.config_entry.options[CONF_SHARES]:
@@ -168,6 +176,34 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 self._do_callback(self.share_callbacks, share)
         data["shares"] = shares
 
+    async def _update_vms(self, data: UnraidServerData) -> None:
+        vms = {}
+        try:
+            query_response = await self.api_client.query_vms()
+            for vm in query_response:
+                vms[vm.id] = vm
+                if vm.id not in self.known_vms:
+                    self.known_vms.add(vm.id)
+                    self._do_callback(self.vm_callbacks, vm)
+        except UnraidGraphQLError as exc:
+            # VMs might not be available on all systems
+            _LOGGER.debug("No VMs found or VM query failed: %s", exc)
+        data["vms"] = vms
+
+    async def _update_containers(self, data: UnraidServerData) -> None:
+        containers = {}
+        try:
+            query_response = await self.api_client.query_docker_containers()
+            for container in query_response:
+                containers[container.id] = container
+                if container.id not in self.known_containers:
+                    self.known_containers.add(container.id)
+                    self._do_callback(self.container_callbacks, container)
+        except UnraidGraphQLError:
+            # Docker might not be available on all systems
+            _LOGGER.debug("No containers found or Docker query failed")
+        data["containers"] = containers
+
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
         for disk_id in self.known_disks:
@@ -177,6 +213,16 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.share_callbacks.add(callback)
         for share_name in self.known_shares:
             self._do_callback([callback], self.data["shares"][share_name])
+
+    def subscribe_vms(self, callback: Callable[[VirtualMachine], None]) -> None:
+        self.vm_callbacks.add(callback)
+        for vm_id in self.known_vms:
+            self._do_callback([callback], self.data["vms"][vm_id])
+
+    def subscribe_containers(self, callback: Callable[[DockerContainer], None]) -> None:
+        self.container_callbacks.add(callback)
+        for container_id in self.known_containers:
+            self._do_callback([callback], self.data["containers"][container_id])
 
     def _do_callback(
         self, callbacks: set[Callable[..., None]], *args: tuple[Any], **kwargs: dict[Any]

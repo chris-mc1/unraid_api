@@ -14,6 +14,8 @@ A Home Assistant custom integration for monitoring [Unraid](https://unraid.net/)
 - **Share Monitoring** - Free space tracking for each network share
 - **UPS Monitoring** - Battery level, load percentage, and runtime remaining
 - **Uptime Tracking** - Human-readable server uptime with boot timestamp
+- **VM Control** - Start/stop virtual machines with state monitoring
+- **Docker Control** - Start/stop Docker containers with state monitoring
 
 ## 📋 Requirements
 
@@ -49,7 +51,7 @@ Before setup, create an API key on your Unraid server:
 Use this pre-configured link (replace `YOUR_SERVER` with your Unraid IP/hostname):
 
 ```
-http://YOUR_SERVER/Settings/ManagementAccess/ApiKeys/new?name=HomeAssistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%2Bups%3Aread_any&description=Home+Assistant+Integration
+http://YOUR_SERVER/Settings/ManagementAccess/ApiKeys/new?name=HomeAssistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%2Bups%2Bdocker%2Bvms%3Aread_write&description=Home+Assistant+Integration
 ```
 
 ### Manual Method
@@ -65,6 +67,8 @@ http://YOUR_SERVER/Settings/ManagementAccess/ApiKeys/new?name=HomeAssistant&scop
 | Disk     | Read       |
 | Share    | Read       |
 | UPS      | Read       |
+| Docker   | Read/Write |
+| VMs      | Read/Write |
 
 ## ⚙️ Configuration
 
@@ -125,6 +129,18 @@ http://YOUR_SERVER/Settings/ManagementAccess/ApiKeys/new?name=HomeAssistant&scop
 | Entity | Description |
 |--------|-------------|
 | Free Space | Available space on the share |
+
+### VM Switches (per virtual machine)
+
+| Entity | Description |
+|--------|-------------|
+| VM {name} | Switch to start/stop the VM, shows running state |
+
+### Docker Switches (per container)
+
+| Entity | Description |
+|--------|-------------|
+| Container {name} | Switch to start/stop the container, shows running state |
 
 ## 🔄 API Version Support
 

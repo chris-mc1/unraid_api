@@ -143,6 +143,14 @@
             "disk_spinning": {
                 "name": "{disk_name} spinning"
             }
+        },
+        "switch": {
+            "vm": {
+                "name": "VM {name}"
+            },
+            "docker_container": {
+                "name": "Container {name}"
+            }
         }
     },
     "exceptions": {

@@ -121,3 +121,47 @@ class UPSDevice:
     load_percentage: int  # load percentage 0-100
     input_voltage: float | None
     output_voltage: float | None
+
+
+class VMState(StrEnum):  # noqa: D101
+    RUNNING = "RUNNING"
+    SHUTOFF = "SHUTOFF"
+    PAUSED = "PAUSED"
+    PMSUSPENDED = "PMSUSPENDED"
+    IDLE = "IDLE"
+    CRASHED = "CRASHED"
+
+
+@dataclass
+class VirtualMachine:
+    """Virtual Machine."""
+
+    id: str
+    name: str
+    state: VMState
+
+
+class DockerContainerState(StrEnum):  # noqa: D101
+    RUNNING = "RUNNING"
+    EXITED = "EXITED"
+    PAUSED = "PAUSED"
+    CREATED = "CREATED"
+    RESTARTING = "RESTARTING"
+    REMOVING = "REMOVING"
+    DEAD = "DEAD"
+
+
+@dataclass
+class DockerContainer:
+    """Docker Container."""
+
+    id: str
+    names: list[str]
+    state: DockerContainerState
+    image: str | None = None
+    status: str | None = None  # Human readable status like "Up 2 days"
+
+    @property
+    def name(self) -> str:
+        """Return the container name."""
+        return self.names[0] if self.names else self.id

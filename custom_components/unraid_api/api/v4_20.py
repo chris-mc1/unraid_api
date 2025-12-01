@@ -11,11 +11,15 @@ from custom_components.unraid_api.models import (
     Disk,
     DiskStatus,
     DiskType,
+    DockerContainer,
+    DockerContainerState,
     Metrics,
     ServerInfo,
     Share,
     UPSDevice,
     UPSStatus,
+    VirtualMachine,
+    VMState,
 )
 
 from . import UnraidApiClient
@@ -145,6 +149,94 @@ class UnraidApiV420(UnraidApiClient):
             )
             for ups in response.ups_devices
         ]
+
+    async def query_vms(self) -> list[VirtualMachine]:
+        """Query virtual machines from Unraid."""
+        response = await self.call_api(VMS_QUERY, VMsQuery)
+        return [
+            VirtualMachine(
+                id=vm.id,
+                name=vm.name,
+                state=VMState(vm.state) if vm.state in VMState.__members__ else VMState.SHUTOFF,
+            )
+            for vm in response.vms.domain
+        ]
+
+    async def query_docker_containers(self) -> list[DockerContainer]:
+        """Query Docker containers from Unraid."""
+        response = await self.call_api(DOCKER_QUERY, DockerQuery)
+        return [
+            DockerContainer(
+                id=container.id,
+                names=container.names,
+                state=(
+                    DockerContainerState(container.state)
+                    if container.state in DockerContainerState.__members__
+                    else DockerContainerState.EXITED
+                ),
+                image=container.image,
+                status=container.status,
+            )
+            for container in response.docker.containers
+        ]
+
+    async def start_vm(self, vm_id: str) -> bool:
+        """Start a virtual machine."""
+        response = await self.call_api(
+            VM_START_MUTATION,
+            VMStartMutation,
+            variables={"id": vm_id},
+        )
+        return response.vm.start
+
+    async def stop_vm(self, vm_id: str) -> bool:
+        """Stop a virtual machine."""
+        response = await self.call_api(
+            VM_STOP_MUTATION,
+            VMStopMutation,
+            variables={"id": vm_id},
+        )
+        return response.vm.stop
+
+    async def start_container(self, container_id: str) -> DockerContainer:
+        """Start a Docker container."""
+        response = await self.call_api(
+            DOCKER_START_MUTATION,
+            DockerStartMutation,
+            variables={"id": container_id},
+        )
+        container = response.docker.start
+        return DockerContainer(
+            id=container.id,
+            names=container.names,
+            state=(
+                DockerContainerState(container.state)
+                if container.state in DockerContainerState.__members__
+                else DockerContainerState.EXITED
+            ),
+            image=None,
+            status=None,
+        )
+
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        """Stop a Docker container."""
+        response = await self.call_api(
+            DOCKER_STOP_MUTATION,
+            DockerStopMutation,
+            variables={"id": container_id},
+        )
+        container = response.docker.stop
+        return DockerContainer(
+            id=container.id,
+            names=container.names,
+            state=(
+                DockerContainerState(container.state)
+                if container.state in DockerContainerState.__members__
+                else DockerContainerState.EXITED
+            ),
+            image=None,
+            status=None,
+        )
 
 
 ## Queries
@@ -411,3 +503,145 @@ class _UPSPower(BaseModel):
     load_percentage: int = Field(alias="loadPercentage")
     input_voltage: float | None = Field(alias="inputVoltage")
     output_voltage: float | None = Field(alias="outputVoltage")
+
+
+### Virtual Machines
+VMS_QUERY = """
+query VMs {
+  vms {
+    domain {
+      id
+      name
+      state
+    }
+  }
+}
+"""
+
+
+class VMsQuery(BaseModel):  # noqa: D101
+    vms: _Vms
+
+
+class _Vms(BaseModel):
+    domain: list[_VMDomain]
+
+
+class _VMDomain(BaseModel):
+    id: str
+    name: str
+    state: str
+
+
+VM_START_MUTATION = """
+mutation StartVM($id: PrefixedID!) {
+  vm {
+    start(id: $id)
+  }
+}
+"""
+
+
+class VMStartMutation(BaseModel):  # noqa: D101
+    vm: _VMStartResult
+
+
+class _VMStartResult(BaseModel):
+    start: bool
+
+
+VM_STOP_MUTATION = """
+mutation StopVM($id: PrefixedID!) {
+  vm {
+    stop(id: $id)
+  }
+}
+"""
+
+
+class VMStopMutation(BaseModel):  # noqa: D101
+    vm: _VMStopResult
+
+
+class _VMStopResult(BaseModel):
+    stop: bool
+
+
+### Docker Containers
+DOCKER_QUERY = """
+query Docker {
+  docker {
+    containers {
+      id
+      names
+      state
+      image
+      status
+    }
+  }
+}
+"""
+
+
+class DockerQuery(BaseModel):  # noqa: D101
+    docker: _Docker
+
+
+class _Docker(BaseModel):
+    containers: list[_DockerContainer]
+
+
+class _DockerContainer(BaseModel):
+    id: str
+    names: list[str]
+    state: str
+    image: str | None = None
+    status: str | None = None
+
+
+DOCKER_START_MUTATION = """
+mutation StartContainer($id: PrefixedID!) {
+  docker {
+    start(id: $id) {
+      id
+      names
+      state
+    }
+  }
+}
+"""
+
+
+class DockerStartMutation(BaseModel):  # noqa: D101
+    docker: _DockerStartResult
+
+
+class _DockerStartResult(BaseModel):
+    start: _DockerContainerResult
+
+
+class _DockerContainerResult(BaseModel):
+    id: str
+    names: list[str]
+    state: str
+
+
+DOCKER_STOP_MUTATION = """
+mutation StopContainer($id: PrefixedID!) {
+  docker {
+    stop(id: $id) {
+      id
+      names
+      state
+    }
+  }
+}
+"""
+
+
+class DockerStopMutation(BaseModel):  # noqa: D101
+    docker: _DockerStopResult
+
+
+class _DockerStopResult(BaseModel):
+    stop: _DockerContainerResult

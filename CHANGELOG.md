@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **VM control**: Switch entities for starting and stopping virtual machines with state monitoring (running, shutoff, paused, etc.)
+  - Entity naming: `switch.{server}_vm_{vm_name}` with friendly name "VM {name}"
+  - Supports start/stop actions via Home Assistant UI or automations
+- **Docker control**: Switch entities for starting and stopping Docker containers with state monitoring
+  - Entity naming: `switch.{server}_container_{container_name}` with friendly name "Container {name}"
+  - Supports start/stop actions via Home Assistant UI or automations
 - **Uptime sensor**: Shows server uptime in human-readable format (e.g., "8 days, 1 hour, 28 minutes") with raw `uptime_since` timestamp attribute
 - **UPS monitoring** (GitHub issue #31): Three new sensors for UPS-connected servers:
   - UPS Battery (percentage)
@@ -19,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Entity naming convention**:
+  - VM switches: `{entry_id}_vm_switch_{vm_id}` unique ID, "VM {name}" friendly name
+  - Docker switches: `{entry_id}_container_switch_{container_id}` unique ID, "Container {name}" friendly name
 - Cleaner sensor naming convention (e.g., "UPS Battery" instead of device model name)
 - Host field now accepts IP address or hostname without requiring `http://` prefix
 
@@ -27,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP connections now properly redirect to HTTPS when server uses SSL proxy
 - SSL certificate errors now automatically retry without verification for self-signed certificates
 - Fixed connection issues when entering just IP address without protocol prefix
+- Fixed VM GraphQL query to only request available fields (id, name, state)
 
 ## [1.0.0] - Initial Release
 
