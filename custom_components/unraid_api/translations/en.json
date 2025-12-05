@@ -108,6 +108,27 @@
             },
             "share_free": {
                 "name": "{share_name} free space"
+            },
+            "ups_status": {
+                "name": "Status"
+            },
+            "ups_level": {
+                "name": "Level"
+            },
+            "ups_runtime": {
+                "name": "Runtime"
+            },
+            "ups_health": {
+                "name": "Health"
+            },
+            "ups_load": {
+                "name": "Load"
+            },
+            "ups_input_voltage": {
+                "name": "Input voltage"
+            },
+            "ups_output_voltage": {
+                "name": "Output voltage"
             }
         },
         "binary_sensor": {

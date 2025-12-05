@@ -97,3 +97,19 @@ class Array:
     capacity_free: int
     capacity_used: int
     capacity_total: int
+
+
+@dataclass
+class UpsDevice:
+    """UPS device."""
+
+    id: str
+    name: str
+    model: str
+    status: str
+    battery_level: int
+    battery_runtime: int
+    battery_health: str
+    load_percentage: int
+    output_voltage: float
+    input_voltage: float

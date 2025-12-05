@@ -198,3 +198,72 @@ async def test_share_sensors_disabled(
 
     state = hass.states.get("sensor.test_server_share_2_free_space")
     assert state is None
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+async def test_ups_sensors(
+    api_responses: GraphqlResponses,
+    hass: HomeAssistant,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test main sensor entities."""
+    mocker = await mock_graphql_server(api_responses)
+    assert await setup_config_entry(hass, mocker)
+    if api_responses.version >= AwesomeVersion("4.26.0"):
+        # ups_status
+        state = hass.states.get("sensor.back_ups_es_650g2_status")
+        assert state.state == "ONLINE"
+
+        # ups_level
+        state = hass.states.get("sensor.back_ups_es_650g2_level")
+        assert state.state == "100"
+
+        # ups_runtime
+        state = hass.states.get("sensor.back_ups_es_650g2_runtime")
+        assert state.state == "0.416666666666667"
+
+        # ups_health
+        state = hass.states.get("sensor.back_ups_es_650g2_health")
+        assert state.state == "Good"
+
+        # ups_load
+        state = hass.states.get("sensor.back_ups_es_650g2_load")
+        assert state.state == "20.0"
+
+        # ups_input_voltage
+        state = hass.states.get("sensor.back_ups_es_650g2_input_voltage")
+        assert state.state == "232.0"
+
+        # ups_output_voltage
+        state = hass.states.get("sensor.back_ups_es_650g2_output_voltage")
+        assert state.state == "120.5"
+
+    else:
+        # ups_status
+        state = hass.states.get("sensor.back_ups_es_650g2_status")
+        assert state is None
+
+        # ups_level
+        state = hass.states.get("sensor.back_ups_es_650g2_level")
+        assert state is None
+
+        # ups_runtime
+        state = hass.states.get("sensor.back_ups_es_650g2_runtime")
+        assert state is None
+
+        # ups_health
+        state = hass.states.get("sensor.back_ups_es_650g2_health")
+        assert state is None
+
+        # ups_load
+        state = hass.states.get("sensor.back_ups_es_650g2_load")
+        assert state is None
+
+        # ups_input_voltage
+        state = hass.states.get("sensor.back_ups_es_650g2_input_voltage")
+        assert state is None
+
+        # ups_output_voltage
+        state = hass.states.get("sensor.back_ups_es_650g2_output_voltage")
+        assert state is None

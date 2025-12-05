@@ -17,6 +17,7 @@ class GraphqlResponses:
     shares: ClassVar[dict]
     disks: ClassVar[dict]
     array: ClassVar[dict]
+    ups: ClassVar[dict]
 
     is_unauthenticated = False
     unauthenticated: ClassVar[dict] = {
@@ -62,25 +63,30 @@ class GraphqlResponses:
     }
 
     def get_response(self, query: str) -> dict:  # noqa: PLR0911
-        if self.is_unauthenticated:
-            return self.unauthenticated
-        if self.all_error:
+        try:
+            if self.is_unauthenticated:
+                return self.unauthenticated
+            if self.all_error:
+                return self.error
+            match query:
+                case "ApiVersion":
+                    return self.api_version
+                case "ServerInfo":
+                    return self.server_info
+                case "Metrics":
+                    return self.metrics
+                case "Shares":
+                    return self.shares
+                case "Disks":
+                    return self.disks
+                case "Array":
+                    return self.array
+                case "UpsDevices":
+                    return self.ups
+                case _:
+                    return self.not_found
+        except ArithmeticError:
             return self.error
-        match query:
-            case "ApiVersion":
-                return self.api_version
-            case "ServerInfo":
-                return self.server_info
-            case "Metrics":
-                return self.metrics
-            case "Shares":
-                return self.shares
-            case "Disks":
-                return self.disks
-            case "Array":
-                return self.array
-            case _:
-                return self.not_found
 
 
 class GraphqlResponses420(GraphqlResponses):
@@ -224,6 +230,24 @@ class GraphqlResponses426(GraphqlResponses420):
                     "cpu": {"percentTotal": 5.1},
                 },
                 "info": {"cpu": {"packages": {"power": [2.8], "temp": [31]}}},
+            }
+        }
+        self.ups = {
+            "data": {
+                "upsDevices": [
+                    {
+                        "battery": {"chargeLevel": 100, "estimatedRuntime": 25, "health": "Good"},
+                        "power": {
+                            "loadPercentage": 20,
+                            "outputVoltage": 120.5,
+                            "inputVoltage": 232,
+                        },
+                        "model": "Back-UPS ES 650G2",
+                        "name": "Back-UPS ES 650G2",
+                        "status": "ONLINE",
+                        "id": "Back-UPS ES 650G2",
+                    }
+                ]
             }
         }
 
