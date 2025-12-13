@@ -284,8 +284,7 @@ UPS_SENSOR_DESCRIPTIONS: tuple[UnraidUpsSensorEntityDescription, ...] = (
     UnraidUpsSensorEntityDescription(
         key="ups_runtime",
         device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
         value_fn=lambda device: device.battery_runtime,
     ),
     UnraidUpsSensorEntityDescription(
