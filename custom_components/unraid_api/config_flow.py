@@ -113,31 +113,48 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         return UnraidOptionsFlow()
 
     async def validate_config(self) -> None:
+        # Normalize and validate the URL before attempting connection
+        try:
+            from .api import normalize_url
+            
+            normalized_host = normalize_url(self.data[CONF_HOST])
+            _LOGGER.debug("Validating connection to: %s", normalized_host)
+        except ValueError as exc:
+            _LOGGER.error("Invalid URL format: %s - %s", self.data[CONF_HOST], exc)
+            self.errors = {"base": "invalid_url"}
+            self.description_placeholders = {"url": self.data[CONF_HOST], "error": str(exc)}
+            return
+        
         try:
             api_client = await get_api_client(
-                self.data[CONF_HOST],
+                normalized_host,
                 self.data[CONF_API_KEY],
                 async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
             )
             response = await api_client.query_server_info()
             self.title = response.name
+            # Store the normalized URL for use in the config entry
+            self.data[CONF_HOST] = normalized_host
         except ClientConnectorSSLError:
-            _LOGGER.exception("SSL error")
+            _LOGGER.exception("SSL error connecting to %s", normalized_host)
             self.errors = {"base": "ssl_error"}
-        except (ClientConnectionError, TimeoutError, ContentTypeError):
-            _LOGGER.exception("Connection error")
+        except (ClientConnectionError, TimeoutError, ContentTypeError) as exc:
+            _LOGGER.exception("Connection error to %s: %s", normalized_host, exc)
             self.errors = {"base": "cannot_connect"}
+            self.description_placeholders = {"url": normalized_host, "error": str(exc)}
         except UnraidAuthError:
-            _LOGGER.exception("Auth failed")
+            _LOGGER.exception("Auth failed for %s", normalized_host)
             self.errors = {"base": "auth_failed"}
         except UnraidGraphQLError as exc:
-            _LOGGER.exception("GraphQL Error response: %s", exc.response)
+            _LOGGER.exception("GraphQL Error response from %s: %s", normalized_host, exc.response)
             self.errors = {"base": "error_response"}
             self.description_placeholders["error_msg"] = exc.args[0]
-        except InvalidUrlClientError:
+        except InvalidUrlClientError as exc:
+            _LOGGER.error("Invalid URL client error for %s: %s", normalized_host, exc)
             self.errors = {"base": "invalid_url"}
+            self.description_placeholders = {"url": normalized_host, "error": str(exc)}
         except IncompatibleApiError as exc:
-            _LOGGER.exception("Incompatible API, %s < %s", exc.version, exc.min_version)
+            _LOGGER.exception("Incompatible API for %s, %s < %s", normalized_host, exc.version, exc.min_version)
             self.errors = {"base": "api_incompatible"}
             self.description_placeholders["min_version"] = exc.min_version
             self.description_placeholders["version"] = exc.version

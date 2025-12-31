@@ -13,6 +13,9 @@
             "array_used": {
                 "default": "mdi:database"
             },
+            "parity_check_status": {
+                "default": "mdi:check-circle"
+            },
             "ram_usage": {
                 "default": "mdi:memory"
             },

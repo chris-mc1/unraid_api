@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, ValidationError
+from yarl import URL
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -16,6 +17,49 @@ if TYPE_CHECKING:
     from unraid_api.models import Array, Disk, DockerContainer, Metrics, ServerInfo, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def normalize_url(host: str) -> str:
+    """
+    Normalize and validate the Unraid server URL.
+    
+    Args:
+        host: User-provided host URL (may include scheme, port, trailing slashes)
+        
+    Returns:
+        Normalized URL string ready for API calls
+        
+    Raises:
+        ValueError: If the URL cannot be normalized or is invalid
+    """
+    if not host or not host.strip():
+        raise ValueError("Host URL cannot be empty")
+    
+    host = host.strip()
+    
+    try:
+        # Parse the URL
+        url = URL(host)
+        
+        # If no scheme provided, default to http
+        if not url.scheme:
+            url = URL(f"http://{host}")
+        elif url.scheme not in ("http", "https"):
+            raise ValueError(f"Invalid URL scheme: {url.scheme}. Must be http or https")
+        
+        # Validate we have a hostname/IP
+        if not url.host:
+            raise ValueError("URL must include a hostname or IP address")
+        
+        # Normalize: remove trailing slashes, ensure proper format
+        normalized = url.with_path("").with_query(None).with_fragment(None)
+        
+        _LOGGER.debug("Normalized URL: %s -> %s", host, str(normalized))
+        return str(normalized)
+        
+    except Exception as exc:
+        _LOGGER.error("Failed to normalize URL '%s': %s", host, exc)
+        raise ValueError(f"Invalid URL format: {host}") from exc
 
 
 class UnraidGraphQLError(Exception):
@@ -73,10 +117,20 @@ class UnraidApiClient:
     version: AwesomeVersion
 
     def __init__(self, host: str, api_key: str, session: ClientSession) -> None:
-        self.host = host.rstrip("/")
-        self.endpoint = self.host + "/graphql"
+        # Normalize the host URL
+        normalized_host = normalize_url(host)
+        self.host = normalized_host
+        
+        # Construct the GraphQL endpoint using yarl.URL for proper path joining
+        base_url = URL(normalized_host)
+        self.endpoint = str(base_url / "graphql")
+        
         self.api_key = api_key
         self.session = session
+        
+        _LOGGER.debug("Initialized API client - Host: %s, Endpoint: %s", self.host, self.endpoint)
+        
+        _LOGGER.debug("Initialized API client - Host: %s, Endpoint: %s", self.host, self.endpoint)
 
     async def call_api(
         self,

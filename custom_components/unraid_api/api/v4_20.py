@@ -13,6 +13,7 @@ from custom_components.unraid_api.models import (
     DiskType,
     DockerContainer,
     Metrics,
+    ParityCheckStatus,
     ServerInfo,
     Share,
 )
@@ -114,11 +115,29 @@ class UnraidApiV420(UnraidApiClient):
 
     async def query_array(self) -> Array:
         response = await self.call_api(ARRAY_QUERY, ArrayQuery)
+        
+        # Parse parity check status if available
+        parity_check_status = None
+        if response.array.parity_check_status:
+            pc = response.array.parity_check_status
+            parity_check_status = ParityCheckStatus(
+                correcting=pc.correcting,
+                date=pc.date,
+                duration=pc.duration,
+                errors=pc.errors,
+                paused=pc.paused,
+                progress=pc.progress,
+                running=pc.running,
+                speed=pc.speed,
+                status=pc.status,
+            )
+        
         return Array(
             state=response.array.state,
             capacity_free=response.array.capacity.kilobytes.free,
             capacity_used=response.array.capacity.kilobytes.used,
             capacity_total=response.array.capacity.kilobytes.total,
+            parity_check_status=parity_check_status,
         )
 
     async def query_docker_containers(self) -> list[DockerContainer]:
@@ -249,6 +268,17 @@ query Array {
         used
         total
       }
+    }
+    parityCheckStatus {
+      correcting
+      date
+      duration
+      errors
+      paused
+      progress
+      running
+      speed
+      status
     }
   }
 }
@@ -383,9 +413,24 @@ class ArrayQuery(BaseModel):  # noqa: D101
     array: _Array
 
 
+class ParityCheckStatusResponse(BaseModel):  # noqa: D101
+    correcting: bool | None
+    date: str | None
+    duration: int | None
+    errors: int | None
+    paused: bool | None
+    progress: float
+    running: bool | None
+    speed: str | None
+    status: str | None
+
+
 class _Array(BaseModel):
     state: ArrayState
     capacity: ArrayCapacity
+    parity_check_status: ParityCheckStatusResponse | None = Field(
+        alias="parityCheckStatus", default=None
+    )
 
 
 class ArrayCapacity(BaseModel):  # noqa: D101

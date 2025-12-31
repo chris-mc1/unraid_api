@@ -90,6 +90,21 @@ class Disk:
 
 
 @dataclass
+class ParityCheckStatus:
+    """Parity check status."""
+
+    correcting: bool | None
+    date: str | None
+    duration: int | None
+    errors: int | None
+    paused: bool | None
+    progress: float
+    running: bool | None
+    speed: str | None
+    status: str | None
+
+
+@dataclass
 class Array:
     """Array."""
 
@@ -97,6 +112,7 @@ class Array:
     capacity_free: int
     capacity_used: int
     capacity_total: int
+    parity_check_status: ParityCheckStatus | None = None
 
 
 @dataclass

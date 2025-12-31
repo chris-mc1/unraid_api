@@ -63,6 +63,15 @@
             "array_used": {
                 "name": "Array used space"
             },
+            "parity_check_status": {
+                "name": "Parity check status",
+                "state": {
+                    "running": "Running",
+                    "paused": "Paused",
+                    "correcting": "Correcting",
+                    "not running": "Not running"
+                }
+            },
             "ram_usage": {
                 "name": "RAM usage"
             },

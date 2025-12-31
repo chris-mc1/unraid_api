@@ -151,6 +151,26 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
+        key="parity_check_status",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda coordinator: (
+            "running" if coordinator.data["array"] and coordinator.data["array"].parity_check_status and coordinator.data["array"].parity_check_status.running
+            else "paused" if coordinator.data["array"] and coordinator.data["array"].parity_check_status and coordinator.data["array"].parity_check_status.paused
+            else "correcting" if coordinator.data["array"] and coordinator.data["array"].parity_check_status and coordinator.data["array"].parity_check_status.correcting
+            else "not running" if coordinator.data["array"] and coordinator.data["array"].parity_check_status
+            else None
+        ),
+        options=["running", "paused", "correcting", "not running"],
+        extra_values_fn=lambda coordinator: {
+            "date": coordinator.data["array"].parity_check_status.date if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+            "duration": coordinator.data["array"].parity_check_status.duration if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+            "errors": coordinator.data["array"].parity_check_status.errors if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+            "progress": coordinator.data["array"].parity_check_status.progress if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+            "speed": coordinator.data["array"].parity_check_status.speed if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+            "status": coordinator.data["array"].parity_check_status.status if coordinator.data["array"] and coordinator.data["array"].parity_check_status else None,
+        },
+    ),
+    UnraidSensorEntityDescription(
         key="ram_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
