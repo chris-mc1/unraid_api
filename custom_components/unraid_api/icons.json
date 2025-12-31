@@ -16,6 +16,9 @@
             "ram_usage": {
                 "default": "mdi:memory"
             },
+            "ram_total": {
+                "default": "mdi:memory"
+            },
             "ram_used": {
                 "default": "mdi:memory"
             },

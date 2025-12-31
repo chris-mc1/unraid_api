@@ -66,6 +66,9 @@
             "ram_usage": {
                 "name": "RAM usage"
             },
+            "ram_total": {
+                "name": "RAM total"
+            },
             "ram_used": {
                 "name": "RAM used"
             },

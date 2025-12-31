@@ -94,6 +94,11 @@ def calc_disk_usage_percentage(disk: Disk) -> StateType:
     return (disk.fs_used / disk.fs_size) * 100
 
 
+def bytes_to_gibibytes(bytes_value: int) -> float:
+    """Convert bytes to gibibytes (binary, 1024^3)."""
+    return bytes_value / (1024 ** 3)
+
+
 SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     UnraidSensorEntityDescription(
         key="array_state",
@@ -152,30 +157,40 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda coordinator: coordinator.data["metrics"].memory_percent_total if coordinator.data["metrics"] else None,
         extra_values_fn=lambda coordinator: {
-            "used": coordinator.data["metrics"].memory_active if coordinator.data["metrics"] else None,
-            "free": coordinator.data["metrics"].memory_free if coordinator.data["metrics"] else None,
+            "used": (coordinator.data["metrics"].memory_total - coordinator.data["metrics"].memory_available) if coordinator.data["metrics"] else None,
+            "free": coordinator.data["metrics"].memory_available if coordinator.data["metrics"] else None,
             "total": coordinator.data["metrics"].memory_total if coordinator.data["metrics"] else None,
             "available": coordinator.data["metrics"].memory_available if coordinator.data["metrics"] else None,
         },
     ),
     UnraidSensorEntityDescription(
+        key="ram_total",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_total) if coordinator.data["metrics"] else None,
+        entity_registry_enabled_default=False,
+    ),
+    UnraidSensorEntityDescription(
         key="ram_used",
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfInformation.BYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].memory_active if coordinator.data["metrics"] else None,
+        value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_total - coordinator.data["metrics"].memory_available) if coordinator.data["metrics"] else None,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
         key="ram_free",
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfInformation.BYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].memory_free if coordinator.data["metrics"] else None,
+        value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_available) if coordinator.data["metrics"] else None,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
