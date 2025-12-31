@@ -12,7 +12,12 @@ from aiohttp import (
     ContentTypeError,
     InvalidUrlClientError,
 )
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWithReload
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -39,11 +44,6 @@ from .const import (
     POLL_INTERVAL_OPTIONS,
 )
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigFlowResult
-
-    from . import UnraidConfigEntry
-
 _LOGGER = logging.getLogger(__name__)
 
 USER_DATA_SCHEMA = vol.Schema(
@@ -60,14 +60,13 @@ REAUTH_DATA_SCHEMA = vol.Schema(
 )
 
 # Create selector options for polling intervals
+_POLL_INTERVAL_OPTIONS = [
+    {"value": str(seconds), "label": label}
+    for seconds, label in sorted(POLL_INTERVAL_OPTIONS.items())
+]
+
 _POLL_INTERVAL_SELECTOR = SelectSelector(
-    SelectSelectorConfig(
-        options=[
-            {"value": str(seconds), "label": label}
-            for seconds, label in sorted(POLL_INTERVAL_OPTIONS.items())
-        ],
-        translation_key="poll_interval",
-    )
+    SelectSelectorConfig(options=_POLL_INTERVAL_OPTIONS)
 )
 
 OPTIONS_SCHEMA = vol.Schema(
@@ -103,7 +102,7 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         self.data = {}
         self.description_placeholders = {}
         self.title = ""
-        self.reauth_entry: UnraidConfigEntry = None
+        self.reauth_entry: UnraidConfigEntry | None = None
 
     @staticmethod
     @callback

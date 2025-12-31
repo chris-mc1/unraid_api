@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
@@ -73,7 +73,10 @@ class UnraidUpsData(TypedDict):  # noqa: D101
     ups_devices: dict[str, UpsDevice]
 
 
-class BaseUnraidCoordinator(DataUpdateCoordinator[Any]):
+_TData = TypeVar("_TData")
+
+
+class BaseUnraidCoordinator(DataUpdateCoordinator[_TData]):
     """Base coordinator with shared error handling."""
 
     api_client: UnraidApiClient
@@ -419,7 +422,7 @@ class UnraidUpsCoordinator(BaseUnraidCoordinator[UnraidUpsData]):
                 devices[device.id] = device
                 if device.id not in self.known_ups_devices:
                     self.known_ups_devices.add(device.id)
-                    self._do_callback(self.ups_callbacks, device)
+                    _do_callback(self.ups_callbacks, device)
         except UnraidGraphQLError:
             pass
 
@@ -516,7 +519,7 @@ class UnraidDataUpdateCoordinator(BaseUnraidCoordinator[UnraidServerData]):
             disks[disk.id] = disk
             if disk.id not in self.known_disks:
                 self.known_disks.add(disk.id)
-                self._do_callback(self.disk_callbacks, disk)
+                _do_callback(self.disk_callbacks, disk)
         data["disks"] = disks
 
     async def _update_shares(self, data: UnraidServerData) -> None:
@@ -527,7 +530,7 @@ class UnraidDataUpdateCoordinator(BaseUnraidCoordinator[UnraidServerData]):
             shares[share.name] = share
             if share.name not in self.known_shares:
                 self.known_shares.add(share.name)
-                self._do_callback(self.share_callbacks, share)
+                _do_callback(self.share_callbacks, share)
         data["shares"] = shares
 
     async def _update_ups(self, data: UnraidServerData) -> None:
@@ -539,7 +542,7 @@ class UnraidDataUpdateCoordinator(BaseUnraidCoordinator[UnraidServerData]):
                 devices[device.id] = device
                 if device.id not in self.known_ups_devices:
                     self.known_ups_devices.add(device.id)
-                    self._do_callback(self.ups_callbacks, device)
+                    _do_callback(self.ups_callbacks, device)
         except UnraidGraphQLError:
             pass
 
@@ -559,7 +562,7 @@ class UnraidDataUpdateCoordinator(BaseUnraidCoordinator[UnraidServerData]):
                 if container.id not in self.known_docker_containers:
                     self.known_docker_containers.add(container.id)
                     _LOGGER.debug("New Docker container discovered: %s", container.name)
-                    self._do_callback(self.docker_callbacks, container)
+                    _do_callback(self.docker_callbacks, container)
         except UnraidGraphQLError as exc:
             _LOGGER.warning("Update: Docker GraphQL Error: %s", exc)
         except Exception as exc:
