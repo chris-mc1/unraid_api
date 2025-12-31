@@ -14,7 +14,7 @@
                 "default": "mdi:database"
             },
             "parity_check_status": {
-                "default": "mdi:check-circle"
+                "default": "mdi:harddisk"
             },
             "ram_usage": {
                 "default": "mdi:memory"
