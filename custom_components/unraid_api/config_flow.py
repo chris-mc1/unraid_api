@@ -16,12 +16,28 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWit
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import BooleanSelector
+from homeassistant.helpers.selector import BooleanSelector, SelectSelector, SelectSelectorConfig
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
 from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
-from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .const import (
+    CONF_DOCKER,
+    CONF_DRIVES,
+    CONF_POLL_INTERVAL_DISKS,
+    CONF_POLL_INTERVAL_DOCKER,
+    CONF_POLL_INTERVAL_METRICS,
+    CONF_POLL_INTERVAL_SHARES,
+    CONF_POLL_INTERVAL_UPS,
+    CONF_SHARES,
+    DEFAULT_POLL_INTERVAL_DISKS,
+    DEFAULT_POLL_INTERVAL_DOCKER,
+    DEFAULT_POLL_INTERVAL_METRICS,
+    DEFAULT_POLL_INTERVAL_SHARES,
+    DEFAULT_POLL_INTERVAL_UPS,
+    DOMAIN,
+    POLL_INTERVAL_OPTIONS,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
@@ -43,10 +59,37 @@ REAUTH_DATA_SCHEMA = vol.Schema(
     }
 )
 
+# Create selector options for polling intervals
+_POLL_INTERVAL_SELECTOR = SelectSelector(
+    SelectSelectorConfig(
+        options=[
+            {"value": str(seconds), "label": label}
+            for seconds, label in sorted(POLL_INTERVAL_OPTIONS.items())
+        ],
+        translation_key="poll_interval",
+    )
+)
+
 OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DRIVES, default=True): BooleanSelector(),
         vol.Required(CONF_SHARES, default=True): BooleanSelector(),
+        vol.Required(CONF_DOCKER, default=True): BooleanSelector(),
+        vol.Required(
+            CONF_POLL_INTERVAL_METRICS, default=str(DEFAULT_POLL_INTERVAL_METRICS)
+        ): _POLL_INTERVAL_SELECTOR,
+        vol.Required(
+            CONF_POLL_INTERVAL_DISKS, default=str(DEFAULT_POLL_INTERVAL_DISKS)
+        ): _POLL_INTERVAL_SELECTOR,
+        vol.Required(
+            CONF_POLL_INTERVAL_SHARES, default=str(DEFAULT_POLL_INTERVAL_SHARES)
+        ): _POLL_INTERVAL_SELECTOR,
+        vol.Required(
+            CONF_POLL_INTERVAL_DOCKER, default=str(DEFAULT_POLL_INTERVAL_DOCKER)
+        ): _POLL_INTERVAL_SELECTOR,
+        vol.Required(
+            CONF_POLL_INTERVAL_UPS, default=str(DEFAULT_POLL_INTERVAL_UPS)
+        ): _POLL_INTERVAL_SELECTOR,
     }
 )
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from awesomeversion import AwesomeVersion
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
@@ -14,8 +15,15 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 
 from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
-from .const import DOMAIN, PLATFORMS
-from .coordinator import UnraidDataUpdateCoordinator
+from .const import CONF_DOCKER, CONF_DRIVES, CONF_SHARES, DOMAIN, PLATFORMS
+from .coordinator import (
+    UnraidDataUpdateCoordinator,
+    UnraidDisksCoordinator,
+    UnraidDockerCoordinator,
+    UnraidMetricsCoordinator,
+    UnraidSharesCoordinator,
+    UnraidUpsCoordinator,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -27,8 +35,14 @@ _LOGGER = logging.getLogger(__name__)
 class UnraidData:
     """Dataclass for runtime data."""
 
-    coordinator: UnraidDataUpdateCoordinator
+    metrics_coordinator: UnraidMetricsCoordinator
+    disks_coordinator: UnraidDisksCoordinator | None
+    shares_coordinator: UnraidSharesCoordinator | None
+    docker_coordinator: UnraidDockerCoordinator | None
+    ups_coordinator: UnraidUpsCoordinator | None
     device_info: DeviceInfo
+    # Legacy coordinator for backward compatibility
+    coordinator: UnraidDataUpdateCoordinator
 
 
 type UnraidConfigEntry = ConfigEntry[UnraidData]
@@ -84,12 +98,43 @@ async def async_setup_entry(
         name=server_info.name,
         configuration_url=server_info.localurl,
     )
+
+    # Create separate coordinators for each data type
+    metrics_coordinator = UnraidMetricsCoordinator(hass, config_entry, api_client)
+    await metrics_coordinator.async_config_entry_first_refresh()
+
+    disks_coordinator = None
+    if config_entry.options.get(CONF_DRIVES, True):
+        disks_coordinator = UnraidDisksCoordinator(hass, config_entry, api_client)
+        await disks_coordinator.async_config_entry_first_refresh()
+
+    shares_coordinator = None
+    if config_entry.options.get(CONF_SHARES, True):
+        shares_coordinator = UnraidSharesCoordinator(hass, config_entry, api_client)
+        await shares_coordinator.async_config_entry_first_refresh()
+
+    docker_coordinator = None
+    if config_entry.options.get(CONF_DOCKER, True):
+        docker_coordinator = UnraidDockerCoordinator(hass, config_entry, api_client)
+        await docker_coordinator.async_config_entry_first_refresh()
+
+    ups_coordinator = None
+    if api_client.version >= AwesomeVersion("4.26.0"):
+        ups_coordinator = UnraidUpsCoordinator(hass, config_entry, api_client)
+        await ups_coordinator.async_config_entry_first_refresh()
+
+    # Legacy coordinator for backward compatibility
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
     await coordinator.async_config_entry_first_refresh()
 
     config_entry.runtime_data = UnraidData(
-        coordinator,
-        device_info,
+        metrics_coordinator=metrics_coordinator,
+        disks_coordinator=disks_coordinator,
+        shares_coordinator=shares_coordinator,
+        docker_coordinator=docker_coordinator,
+        ups_coordinator=ups_coordinator,
+        device_info=device_info,
+        coordinator=coordinator,
     )
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)

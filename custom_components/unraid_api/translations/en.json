@@ -12,7 +12,8 @@
             "options": {
                 "data": {
                     "shares": "Monitor shares",
-                    "drives": "Monitor disks"
+                    "drives": "Monitor disks",
+                    "docker": "Monitor Docker containers"
                 }
             },
             "reauth_key": {
@@ -129,6 +130,29 @@
             },
             "ups_output_voltage": {
                 "name": "Output voltage"
+            },
+            "docker_state": {
+                "name": "{container_name} State",
+                "state": {
+                    "running": "Running",
+                    "stopped": "Stopped",
+                    "paused": "Paused",
+                    "restarting": "Restarting",
+                    "removing": "Removing",
+                    "exited": "Exited",
+                    "dead": "Dead",
+                    "created": "Created"
+                }
+            },
+            "docker_status": {
+                "name": "{container_name} Status"
+            },
+            "docker_auto_start": {
+                "name": "{container_name} Auto Start",
+                "state": {
+                    "on": "On",
+                    "off": "Off"
+                }
             }
         },
         "binary_sensor": {
@@ -162,7 +186,35 @@
             "init": {
                 "data": {
                     "shares": "Monitor shares",
-                    "drives": "Monitor disks"
+                    "drives": "Monitor disks",
+                    "docker": "Monitor Docker containers",
+                    "poll_interval_metrics": "Polling interval for Metrics (CPU/RAM/Array)",
+                    "poll_interval_disks": "Polling interval for Disks",
+                    "poll_interval_shares": "Polling interval for Shares",
+                    "poll_interval_docker": "Polling interval for Docker",
+                    "poll_interval_ups": "Polling interval for UPS"
+                },
+                "data_description": {
+                    "poll_interval_metrics": "How often to poll CPU, RAM, and Array status",
+                    "poll_interval_disks": "How often to poll disk information",
+                    "poll_interval_shares": "How often to poll share information",
+                    "poll_interval_docker": "How often to poll Docker container status",
+                    "poll_interval_ups": "How often to poll UPS device information"
+                }
+            }
+        },
+        "selector": {
+            "poll_interval": {
+                "state": {
+                    "30": "30 seconds",
+                    "60": "1 minute",
+                    "120": "2 minutes",
+                    "180": "3 minutes",
+                    "300": "5 minutes",
+                    "600": "10 minutes",
+                    "900": "15 minutes",
+                    "1800": "30 minutes",
+                    "3600": "60 minutes"
                 }
             }
         }

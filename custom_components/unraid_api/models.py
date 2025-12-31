@@ -113,3 +113,16 @@ class UpsDevice:
     load_percentage: int
     output_voltage: float
     input_voltage: float
+
+
+@dataclass
+class DockerContainer:
+    """Docker container."""
+
+    id: str
+    name: str
+    names: list[str]
+    state: str
+    status: str
+    auto_start: bool
+    image: str | None = None

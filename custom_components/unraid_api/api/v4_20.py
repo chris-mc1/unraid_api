@@ -11,6 +11,7 @@ from custom_components.unraid_api.models import (
     Disk,
     DiskStatus,
     DiskType,
+    DockerContainer,
     Metrics,
     ServerInfo,
     Share,
@@ -120,6 +121,37 @@ class UnraidApiV420(UnraidApiClient):
             capacity_total=response.array.capacity.kilobytes.total,
         )
 
+    async def query_docker_containers(self) -> list[DockerContainer]:
+        response = await self.call_api(DOCKER_CONTAINERS_QUERY, DockerContainersQuery)
+        return [
+            DockerContainer(
+                id=container.id,
+                name=container.names[0].lstrip("/") if container.names else container.id[:12],
+                names=container.names,
+                state=container.state,
+                status=container.status,
+                auto_start=container.auto_start,
+                image=container.image,
+            )
+            for container in response.docker.containers
+        ]
+
+    async def start_docker_container(self, container_id: str) -> None:
+        """Start a Docker container."""
+        await self.call_api(
+            START_DOCKER_CONTAINER_MUTATION,
+            StartDockerContainerMutation,
+            variables={"containerId": container_id},
+        )
+
+    async def stop_docker_container(self, container_id: str) -> None:
+        """Stop a Docker container."""
+        await self.call_api(
+            STOP_DOCKER_CONTAINER_MUTATION,
+            StopDockerContainerMutation,
+            variables={"containerId": container_id},
+        )
+
 
 ## Queries
 
@@ -221,6 +253,41 @@ query Array {
   }
 }
 
+"""
+
+DOCKER_CONTAINERS_QUERY = """
+query DockerContainers {
+  docker {
+    containers {
+      id
+      names
+      state
+      status
+      autoStart
+      image
+    }
+  }
+}
+"""
+
+START_DOCKER_CONTAINER_MUTATION = """
+mutation StartDockerContainer($containerId: PrefixedID!) {
+  docker {
+    start(id: $containerId) {
+      id
+    }
+  }
+}
+"""
+
+STOP_DOCKER_CONTAINER_MUTATION = """
+mutation StopDockerContainer($containerId: PrefixedID!) {
+  docker {
+    stop(id: $containerId) {
+      id
+    }
+  }
+}
 """
 
 ## Api Models
@@ -329,3 +396,42 @@ class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
     free: int
     used: int
     total: int
+
+
+### Docker Containers
+class DockerContainersQuery(BaseModel):  # noqa: D101
+    docker: Docker
+
+
+class Docker(BaseModel):  # noqa: D101
+    containers: list[DockerContainerResponse]
+
+
+class DockerContainerResponse(BaseModel):  # noqa: D101
+    id: str
+    names: list[str]
+    state: str
+    status: str
+    auto_start: bool = Field(alias="autoStart")
+    image: str
+
+
+### Docker Mutations
+class StartDockerContainerMutation(BaseModel):  # noqa: D101
+    docker: DockerMutationStartResult
+
+
+class StopDockerContainerMutation(BaseModel):  # noqa: D101
+    docker: DockerMutationStopResult
+
+
+class DockerMutationStartResult(BaseModel):  # noqa: D101
+    start: DockerContainerId
+
+
+class DockerMutationStopResult(BaseModel):  # noqa: D101
+    stop: DockerContainerId
+
+
+class DockerContainerId(BaseModel):  # noqa: D101
+    id: str

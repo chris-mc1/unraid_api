@@ -18,18 +18,21 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 - Create an [API Key](https://docs.unraid.net/API/how-to-use-the-api/#managing-api-keys) with this Template:
 
   ```txt
-  ?name=Homeassistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%3Aread_any&description=Unraid+API+Homeassistant+integration
+  ?name=Homeassistant&scopes=array%2Bdisk%2Binfo%2Bservers%2Bshare%2Bdocker%3Aread_any%2Bdocker%3Aupdate_any&description=Unraid+API+Homeassistant+integration
   ```
 
-  or set permissions manully:
+  or set permissions manually:
   - Resources:
     - Info
     - Servers
     - Array
     - Disk
     - Share
+    - Docker
 
-  - Actions: Read (All)
+  - Actions: 
+    - Read (All) for Info, Servers, Array, Disk, Share
+    - Read (All) and Update (All) for Docker (if you want to control containers)
 
 ## Setup
 
@@ -38,7 +41,7 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
     [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=unraid_api)
 
 2. Enter the URL of the Unraid WebUI and your API Key
-3. Select if you want to monitor disk and shares
+3. Select if you want to monitor disks, shares, and Docker containers
 
 ### Configuration parameters
 
@@ -46,6 +49,7 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
 - API Key: API Key for the Unraid API
 - Monitor Shares: Create Entities for each Network Share
 - Monitor Disks: Create Entities for each Disk
+- Monitor Docker containers: Create Switch entities for each Docker container
 
 ## Entities
 
@@ -64,6 +68,15 @@ The **Unraid API** integration allows users to integrate their [Unraid](https://
   - Disk Temperature (Temperature is unknown for spun down disk)
   - Disk spinning
   - Percentage of used space on the Disk
+
+- When "Monitor Docker containers" enabled, for each Docker container:
+
+  - Switch entity to start/stop the container
+  - Container state (running/stopped)
+  - Container status (e.g., "Up 5 weeks")
+  - Container image name
+  - Auto-start setting
+  - All information available in entity attributes
 
 ## Remove integration
 

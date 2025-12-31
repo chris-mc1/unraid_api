@@ -15,7 +15,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_DRIVES
-from .coordinator import UnraidDataUpdateCoordinator
+from .coordinator import UnraidDisksCoordinator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -58,19 +58,22 @@ async def async_setup_entry(
     @callback
     def add_disk_callback(disk: Disk) -> None:
         _LOGGER.debug("Adding new disk: %s", disk.name)
+        if config_entry.runtime_data.disks_coordinator is None:
+            return
+        api_version = config_entry.runtime_data.disks_coordinator.api_client.version
         entities = [
             UnraidDiskBinarySensorEntity(description, config_entry, disk.id)
             for description in DISK_BINARY_SENSOR_DESCRIPTIONS
-            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
+            if description.min_version <= api_version
         ]
         async_add_entites(entities)
 
-    if config_entry.options[CONF_DRIVES]:
-        config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
+    if config_entry.options.get(CONF_DRIVES, True) and config_entry.runtime_data.disks_coordinator:
+        config_entry.runtime_data.disks_coordinator.subscribe_disks(add_disk_callback)
 
 
 class UnraidDiskBinarySensorEntity(
-    CoordinatorEntity[UnraidDataUpdateCoordinator], BinarySensorEntity
+    CoordinatorEntity[UnraidDisksCoordinator], BinarySensorEntity
 ):
     """Binary Sensor for Unraid Disks."""
 
@@ -83,7 +86,9 @@ class UnraidDiskBinarySensorEntity(
         config_entry: UnraidConfigEntry,
         disk_id: str,
     ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
+        if config_entry.runtime_data.disks_coordinator is None:
+            raise ValueError("Disks coordinator not available")
+        super().__init__(config_entry.runtime_data.disks_coordinator)
         self.disk_id = disk_id
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.disk_id}"

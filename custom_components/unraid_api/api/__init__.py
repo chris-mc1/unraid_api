@@ -13,7 +13,7 @@ from pydantic import BaseModel, ValidationError
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
-    from unraid_api.models import Array, Disk, Metrics, ServerInfo, Share, UpsDevice
+    from unraid_api.models import Array, Disk, DockerContainer, Metrics, ServerInfo, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,6 +133,18 @@ class UnraidApiClient:
 
     @abstractmethod
     async def query_ups(self) -> list[UpsDevice]:
+        pass
+
+    @abstractmethod
+    async def query_docker_containers(self) -> list[DockerContainer]:
+        pass
+
+    @abstractmethod
+    async def start_docker_container(self, container_id: str) -> None:
+        pass
+
+    @abstractmethod
+    async def stop_docker_container(self, container_id: str) -> None:
         pass
 
 
