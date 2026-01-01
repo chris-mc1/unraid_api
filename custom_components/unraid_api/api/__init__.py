@@ -37,26 +37,37 @@ def normalize_url(host: str) -> str:
     
     host = host.strip()
     
+    # Remove trailing slashes
+    host = host.rstrip("/")
+    
     try:
-        # Parse the URL
-        url = URL(host)
+        # Check if URL already has a scheme
+        has_scheme = "://" in host
         
-        # If no scheme provided, default to http
-        if not url.scheme:
-            url = URL(f"http://{host}")
-        elif url.scheme not in ("http", "https"):
+        # If no scheme, prepend http:// before parsing
+        # This is necessary for yarl.URL to correctly parse IP addresses with ports
+        url_to_parse = host if has_scheme else f"http://{host}"
+        
+        # Parse the URL
+        url = URL(url_to_parse)
+        
+        # Validate scheme if one was provided
+        if url.scheme and url.scheme not in ("http", "https"):
             raise ValueError(f"Invalid URL scheme: {url.scheme}. Must be http or https")
         
         # Validate we have a hostname/IP
         if not url.host:
             raise ValueError("URL must include a hostname or IP address")
         
-        # Normalize: remove trailing slashes, ensure proper format
+        # Normalize: remove path, query, and fragment
         normalized = url.with_path("").with_query(None).with_fragment(None)
         
         _LOGGER.debug("Normalized URL: %s -> %s", host, str(normalized))
         return str(normalized)
         
+    except ValueError:
+        # Re-raise ValueError as-is (these are our validation errors)
+        raise
     except Exception as exc:
         _LOGGER.error("Failed to normalize URL '%s': %s", host, exc)
         raise ValueError(f"Invalid URL format: {host}") from exc
