@@ -21,7 +21,13 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import BooleanSelector, SelectSelector, SelectSelectorConfig
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    SelectSelector,
+    SelectSelectorConfig,
+    TextSelector,
+    TextSelectorConfig,
+)
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
@@ -29,11 +35,13 @@ from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_
 from .const import (
     CONF_DOCKER,
     CONF_DRIVES,
+    CONF_PORT,
     CONF_POLL_INTERVAL_DISKS,
     CONF_POLL_INTERVAL_DOCKER,
     CONF_POLL_INTERVAL_METRICS,
     CONF_POLL_INTERVAL_SHARES,
     CONF_POLL_INTERVAL_UPS,
+    CONF_PROTOCOL,
     CONF_SHARES,
     DEFAULT_POLL_INTERVAL_DISKS,
     DEFAULT_POLL_INTERVAL_DOCKER,
@@ -46,13 +54,41 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_HOST): str,
-        vol.Required(CONF_API_KEY): str,
-        vol.Optional(CONF_VERIFY_SSL, default=True): bool,
-    }
-)
+
+def build_url_from_components(host: str, protocol: str, port: int | str | float | None = None) -> str:
+    """
+    Build a URL from host, protocol, and optional port components.
+    
+    Args:
+        host: Hostname or IP address (e.g., "10.0.97.2")
+        protocol: Protocol scheme ("http" or "https")
+        port: Optional port number (can be int, str, or float). If None, uses default ports (80 for HTTP, 443 for HTTPS)
+        
+    Returns:
+        Full URL string (e.g., "http://10.0.97.2" or "https://10.0.97.2:443")
+    """
+    host = host.strip().rstrip("/")
+    
+    # Determine port - use default if not specified
+    if port is None or port == "":
+        port = 443 if protocol == "https" else 80
+    else:
+        # Convert port to integer (handles float strings like "88.0" or actual floats)
+        try:
+            port = int(float(str(port)))
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid port value: {port}. Port must be a number between 1 and 65535.")
+        
+        # Validate port range
+        if not (1 <= port <= 65535):
+            raise ValueError(f"Invalid port value: {port}. Port must be between 1 and 65535.")
+    
+    # Build URL - only include port if it's not the default port
+    if (protocol == "http" and port == 80) or (protocol == "https" and port == 443):
+        return f"{protocol}://{host}"
+    return f"{protocol}://{host}:{port}"
+
+
 REAUTH_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_API_KEY): str,
@@ -68,6 +104,46 @@ _POLL_INTERVAL_OPTIONS = [
 _POLL_INTERVAL_SELECTOR = SelectSelector(
     SelectSelectorConfig(options=_POLL_INTERVAL_OPTIONS)
 )
+
+_PROTOCOL_OPTIONS = [
+    {"value": "http", "label": "HTTP"},
+    {"value": "https", "label": "HTTPS"},
+]
+
+_PROTOCOL_SELECTOR = SelectSelector(
+    SelectSelectorConfig(options=_PROTOCOL_OPTIONS)
+)
+
+# Port selector - use TextSelector for a simple text input field
+_PORT_SELECTOR = TextSelector()
+
+
+def get_user_data_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
+    """
+    Build the user data schema dynamically based on protocol selection.
+    SSL certificate checkbox only shows when HTTPS is selected.
+    """
+    if user_input is None:
+        user_input = {}
+    
+    # Get the current protocol selection, default to "http"
+    protocol = user_input.get(CONF_PROTOCOL, "http")
+    
+    # Build base schema with fields in order: URL, Port, Protocol
+    schema_dict = {
+        vol.Required(CONF_HOST): TextSelector(),
+        vol.Optional(CONF_PORT): _PORT_SELECTOR,
+        vol.Required(CONF_PROTOCOL, default="http"): _PROTOCOL_SELECTOR,
+    }
+    
+    # Only include SSL certificate checkbox if HTTPS is selected
+    if protocol == "https":
+        schema_dict[vol.Optional(CONF_VERIFY_SSL, default=True)] = BooleanSelector()
+    
+    # API key is always required
+    schema_dict[vol.Required(CONF_API_KEY)] = str
+    
+    return vol.Schema(schema_dict)
 
 OPTIONS_SCHEMA = vol.Schema(
     {
@@ -113,48 +189,50 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         return UnraidOptionsFlow()
 
     async def validate_config(self) -> None:
-        # Normalize and validate the URL before attempting connection
+        # Build URL from components
         try:
-            from .api import normalize_url
-            
-            normalized_host = normalize_url(self.data[CONF_HOST])
-            _LOGGER.debug("Validating connection to: %s", normalized_host)
-        except ValueError as exc:
-            _LOGGER.error("Invalid URL format: %s - %s", self.data[CONF_HOST], exc)
+            host_url = build_url_from_components(
+                self.data[CONF_HOST],
+                self.data.get(CONF_PROTOCOL, "http"),
+                self.data.get(CONF_PORT),
+            )
+            _LOGGER.debug("Validating connection to: %s", host_url)
+        except Exception as exc:
+            _LOGGER.error("Error building URL: %s", exc)
             self.errors = {"base": "invalid_url"}
-            self.description_placeholders = {"url": self.data[CONF_HOST], "error": str(exc)}
+            self.description_placeholders = {"url": str(self.data.get(CONF_HOST, "")), "error": str(exc)}
             return
         
         try:
             api_client = await get_api_client(
-                normalized_host,
+                host_url,
                 self.data[CONF_API_KEY],
                 async_get_clientsession(self.hass, self.data[CONF_VERIFY_SSL]),
             )
             response = await api_client.query_server_info()
             self.title = response.name
-            # Store the normalized URL for use in the config entry
-            self.data[CONF_HOST] = normalized_host
+            # Store the built URL for use in the config entry (for backward compatibility)
+            self.data[CONF_HOST] = host_url
         except ClientConnectorSSLError:
-            _LOGGER.exception("SSL error connecting to %s", normalized_host)
+            _LOGGER.exception("SSL error connecting to %s", host_url)
             self.errors = {"base": "ssl_error"}
         except (ClientConnectionError, TimeoutError, ContentTypeError) as exc:
-            _LOGGER.exception("Connection error to %s: %s", normalized_host, exc)
+            _LOGGER.exception("Connection error to %s: %s", host_url, exc)
             self.errors = {"base": "cannot_connect"}
-            self.description_placeholders = {"url": normalized_host, "error": str(exc)}
+            self.description_placeholders = {"url": host_url, "error": str(exc)}
         except UnraidAuthError:
-            _LOGGER.exception("Auth failed for %s", normalized_host)
+            _LOGGER.exception("Auth failed for %s", host_url)
             self.errors = {"base": "auth_failed"}
         except UnraidGraphQLError as exc:
-            _LOGGER.exception("GraphQL Error response from %s: %s", normalized_host, exc.response)
+            _LOGGER.exception("GraphQL Error response from %s: %s", host_url, exc.response)
             self.errors = {"base": "error_response"}
             self.description_placeholders["error_msg"] = exc.args[0]
         except InvalidUrlClientError as exc:
-            _LOGGER.error("Invalid URL client error for %s: %s", normalized_host, exc)
+            _LOGGER.error("Invalid URL client error for %s: %s", host_url, exc)
             self.errors = {"base": "invalid_url"}
-            self.description_placeholders = {"url": normalized_host, "error": str(exc)}
+            self.description_placeholders = {"url": host_url, "error": str(exc)}
         except IncompatibleApiError as exc:
-            _LOGGER.exception("Incompatible API for %s, %s < %s", normalized_host, exc.version, exc.min_version)
+            _LOGGER.exception("Incompatible API for %s, %s < %s", host_url, exc.version, exc.min_version)
             self.errors = {"base": "api_incompatible"}
             self.description_placeholders["min_version"] = exc.min_version
             self.description_placeholders["version"] = exc.version
@@ -162,13 +240,25 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
         if user_input is not None:
-            self.data[CONF_HOST] = user_input[CONF_HOST].rstrip("/")
+            self.data[CONF_HOST] = user_input[CONF_HOST].strip()
+            self.data[CONF_PROTOCOL] = user_input.get(CONF_PROTOCOL, "http")
+            self.data[CONF_PORT] = user_input.get(CONF_PORT)
             self.data[CONF_API_KEY] = user_input[CONF_API_KEY]
-            self.data[CONF_VERIFY_SSL] = user_input[CONF_VERIFY_SSL]
+            # Only set verify_ssl if HTTPS is selected, otherwise default to False
+            if user_input.get(CONF_PROTOCOL) == "https":
+                self.data[CONF_VERIFY_SSL] = user_input.get(CONF_VERIFY_SSL, True)
+            else:
+                # For HTTP, SSL verification doesn't apply, but we'll set it to False
+                # (it won't be used anyway)
+                self.data[CONF_VERIFY_SSL] = False
+            
             await self.validate_config()
             if not self.errors:
                 return await self.async_step_options()
-        schema = self.add_suggested_values_to_schema(USER_DATA_SCHEMA, user_input)
+        
+        # Build dynamic schema based on current protocol selection
+        schema = get_user_data_schema(user_input)
+        schema = self.add_suggested_values_to_schema(schema, user_input)
         return self.async_show_form(
             step_id="user",
             data_schema=schema,

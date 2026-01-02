@@ -12,6 +12,8 @@ PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
 CONF_SHARES: Final[str] = "shares"
 CONF_DRIVES: Final[str] = "drives"
 CONF_DOCKER: Final[str] = "docker"
+CONF_PROTOCOL: Final[str] = "protocol"
+CONF_PORT: Final[str] = "port"
 
 # Polling interval configuration keys
 CONF_POLL_INTERVAL_METRICS: Final[str] = "poll_interval_metrics"

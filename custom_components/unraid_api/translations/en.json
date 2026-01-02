@@ -5,6 +5,8 @@
                 "title": "Add new Unraid server",
                 "data": {
                     "host": "Unraid WebUI URL",
+                    "port": "Unraid GUI Port",
+                    "protocol": "GUI Web Protocol",
                     "api_key": "API key",
                     "verify_ssl": "Verify SSL certificate"
                 }

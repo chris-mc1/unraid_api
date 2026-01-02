@@ -128,18 +128,27 @@ class UnraidApiClient:
     version: AwesomeVersion
 
     def __init__(self, host: str, api_key: str, session: ClientSession) -> None:
-        # Normalize the host URL
-        normalized_host = normalize_url(host)
-        self.host = normalized_host
+        # Host should already be a properly formatted URL from config flow
+        # For backward compatibility with old configs, try to normalize if needed
+        try:
+            # Try parsing as-is first (for new properly formatted URLs)
+            parsed = URL(host)
+            if parsed.scheme and parsed.host:
+                # Already properly formatted
+                self.host = host
+            else:
+                # Old format, normalize it
+                self.host = normalize_url(host)
+        except Exception:
+            # Fallback to normalization for backward compatibility
+            self.host = normalize_url(host)
         
         # Construct the GraphQL endpoint using yarl.URL for proper path joining
-        base_url = URL(normalized_host)
+        base_url = URL(self.host)
         self.endpoint = str(base_url / "graphql")
         
         self.api_key = api_key
         self.session = session
-        
-        _LOGGER.debug("Initialized API client - Host: %s, Endpoint: %s", self.host, self.endpoint)
         
         _LOGGER.debug("Initialized API client - Host: %s, Endpoint: %s", self.host, self.endpoint)
 
