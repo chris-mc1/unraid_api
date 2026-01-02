@@ -59,15 +59,66 @@ def build_url_from_components(host: str, protocol: str, port: int | str | float 
     """
     Build a URL from host, protocol, and optional port components.
     
+    Handles cases where the host field might contain a full URL (e.g., "http://10.0.97.3:88")
+    by extracting just the hostname/IP and port, then using the form's protocol and port values.
+    
     Args:
-        host: Hostname or IP address (e.g., "10.0.97.2")
+        host: Hostname, IP address, or full URL (e.g., "10.0.97.2" or "http://10.0.97.3:88")
         protocol: Protocol scheme ("http" or "https")
         port: Optional port number (can be int, str, or float). If None, uses default ports (80 for HTTP, 443 for HTTPS)
         
     Returns:
-        Full URL string (e.g., "http://10.0.97.2" or "https://10.0.97.2:443")
+        Full URL string (e.g., "http://10.0.97.2" or "https://10.0.97.3:88")
     """
+    from yarl import URL
+    
     host = host.strip().rstrip("/")
+    
+    # If host contains a URL (has ://), parse it to extract just the hostname/IP and port
+    # This handles cases where users enter "http://10.0.97.3:88" in the host field
+    if "://" in host:
+        try:
+            parsed = URL(host)
+            # Extract just the hostname/IP (without port or scheme)
+            extracted_host = parsed.host
+            if not extracted_host:
+                # If parsing didn't give us a host, fall back to manual extraction
+                raise ValueError("No host found in URL")
+            
+            # Use the extracted hostname/IP (this should be just "10.0.97.3", no scheme, no port)
+            host = extracted_host
+            
+            # If port wasn't provided in the form field, use the port from the URL if present
+            if port is None or port == "":
+                if parsed.port is not None:
+                    port = parsed.port
+                # If no port in URL, we'll use default later
+        except (ValueError, TypeError):
+            # If parsing fails, try to extract host manually
+            # Remove scheme if present (e.g., "http://" or "https://")
+            if "://" in host:
+                # Split on :// and take everything after it
+                host_without_scheme = host.split("://", 1)[1]
+                # Remove any path (everything after /)
+                host_without_scheme = host_without_scheme.split("/")[0]
+                
+                # Now extract hostname and port
+                # Handle format: hostname:port or just hostname
+                if ":" in host_without_scheme and not host_without_scheme.startswith("["):  # Not IPv6
+                    parts = host_without_scheme.rsplit(":", 1)
+                    if len(parts) == 2:
+                        try:
+                            # Check if the last part is a port number
+                            potential_port = int(parts[1])
+                            host = parts[0]
+                            if port is None or port == "":
+                                port = potential_port
+                        except (ValueError, IndexError):
+                            # Not a port, might be IPv6 or something else
+                            host = host_without_scheme
+                else:
+                    # No port in the URL, just use the hostname
+                    host = host_without_scheme
     
     # Determine port - use default if not specified
     if port is None or port == "":
@@ -120,30 +171,19 @@ _PORT_SELECTOR = TextSelector()
 
 def get_user_data_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
     """
-    Build the user data schema dynamically based on protocol selection.
-    SSL certificate checkbox only shows when HTTPS is selected.
+    Build the user data schema.
+    Fields are in order: URL, Port, Protocol, Verify SSL certificate, API key.
     """
-    if user_input is None:
-        user_input = {}
-    
-    # Get the current protocol selection, default to "http"
-    protocol = user_input.get(CONF_PROTOCOL, "http")
-    
-    # Build base schema with fields in order: URL, Port, Protocol
-    schema_dict = {
-        vol.Required(CONF_HOST): TextSelector(),
-        vol.Optional(CONF_PORT): _PORT_SELECTOR,
-        vol.Required(CONF_PROTOCOL, default="http"): _PROTOCOL_SELECTOR,
-    }
-    
-    # Only include SSL certificate checkbox if HTTPS is selected
-    if protocol == "https":
-        schema_dict[vol.Optional(CONF_VERIFY_SSL, default=True)] = BooleanSelector()
-    
-    # API key is always required
-    schema_dict[vol.Required(CONF_API_KEY)] = str
-    
-    return vol.Schema(schema_dict)
+    # Build schema with fields in order: URL, Port, Protocol, Verify SSL, API key
+    return vol.Schema(
+        {
+            vol.Required(CONF_HOST): TextSelector(),
+            vol.Optional(CONF_PORT): _PORT_SELECTOR,
+            vol.Required(CONF_PROTOCOL, default="http"): _PROTOCOL_SELECTOR,
+            vol.Optional(CONF_VERIFY_SSL, default=True): BooleanSelector(),
+            vol.Required(CONF_API_KEY): str,
+        }
+    )
 
 OPTIONS_SCHEMA = vol.Schema(
     {
@@ -244,19 +284,14 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             self.data[CONF_PROTOCOL] = user_input.get(CONF_PROTOCOL, "http")
             self.data[CONF_PORT] = user_input.get(CONF_PORT)
             self.data[CONF_API_KEY] = user_input[CONF_API_KEY]
-            # Only set verify_ssl if HTTPS is selected, otherwise default to False
-            if user_input.get(CONF_PROTOCOL) == "https":
-                self.data[CONF_VERIFY_SSL] = user_input.get(CONF_VERIFY_SSL, True)
-            else:
-                # For HTTP, SSL verification doesn't apply, but we'll set it to False
-                # (it won't be used anyway)
-                self.data[CONF_VERIFY_SSL] = False
+            # Get verify_ssl value (always shown, but only meaningful for HTTPS)
+            self.data[CONF_VERIFY_SSL] = user_input.get(CONF_VERIFY_SSL, True)
             
             await self.validate_config()
             if not self.errors:
                 return await self.async_step_options()
         
-        # Build dynamic schema based on current protocol selection
+        # Build schema (SSL checkbox always shown)
         schema = get_user_data_schema(user_input)
         schema = self.add_suggested_values_to_schema(schema, user_input)
         return self.async_show_form(

@@ -129,23 +129,31 @@ class UnraidApiClient:
 
     def __init__(self, host: str, api_key: str, session: ClientSession) -> None:
         # Host should already be a properly formatted URL from config flow
-        # For backward compatibility with old configs, try to normalize if needed
+        # For backward compatibility with old configs, check if it needs normalization
         try:
             # Try parsing as-is first (for new properly formatted URLs)
             parsed = URL(host)
             if parsed.scheme and parsed.host:
-                # Already properly formatted
+                # Already properly formatted - use as-is
                 self.host = host
             else:
-                # Old format, normalize it
+                # Missing scheme or host - normalize for backward compatibility
                 self.host = normalize_url(host)
-        except Exception:
-            # Fallback to normalization for backward compatibility
-            self.host = normalize_url(host)
+        except (ValueError, TypeError) as exc:
+            # If parsing fails, try normalization for backward compatibility with old configs
+            # This handles cases where old configs might have stored just "10.0.97.2" instead of "http://10.0.97.2"
+            try:
+                self.host = normalize_url(host)
+            except (ValueError, TypeError):
+                # If normalization also fails, re-raise with a clearer error
+                raise ValueError(f"Invalid host URL: {host}") from exc
         
         # Construct the GraphQL endpoint using yarl.URL for proper path joining
-        base_url = URL(self.host)
-        self.endpoint = str(base_url / "graphql")
+        try:
+            base_url = URL(self.host)
+            self.endpoint = str(base_url / "graphql")
+        except (ValueError, TypeError) as exc:
+            raise ValueError(f"Invalid host URL format: {self.host}") from exc
         
         self.api_key = api_key
         self.session = session

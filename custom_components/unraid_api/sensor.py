@@ -191,7 +191,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
         value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_total) if coordinator.data["metrics"] else None,
-        entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
         key="ram_used",
@@ -201,7 +200,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
         value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_total - coordinator.data["metrics"].memory_available) if coordinator.data["metrics"] else None,
-        entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
         key="ram_free",
@@ -211,7 +209,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
         value_fn=lambda coordinator: bytes_to_gibibytes(coordinator.data["metrics"].memory_available) if coordinator.data["metrics"] else None,
-        entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
         key="cpu_utilization",

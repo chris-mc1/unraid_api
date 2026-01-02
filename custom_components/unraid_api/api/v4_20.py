@@ -279,8 +279,8 @@ query Array {
       running
       speed
       status
-    }
   }
+}
 }
 
 """
