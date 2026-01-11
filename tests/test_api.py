@@ -1,6 +1,8 @@
 """API Client Tests."""
 
-from collections.abc import Awaitable, Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pytest
 from custom_components.unraid_api.api import (
@@ -10,9 +12,12 @@ from custom_components.unraid_api.api import (
 )
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
 
-from tests.conftest import GraphqlServerMocker
-
 from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from .conftest import GraphqlServerMocker
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)

@@ -110,6 +110,6 @@ class UpsDevice:
     battery_level: int
     battery_runtime: int
     battery_health: str
-    load_percentage: int
+    load_percentage: float
     output_voltage: float
     input_voltage: float

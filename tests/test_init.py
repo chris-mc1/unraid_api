@@ -3,40 +3,37 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
-from custom_components.unraid_api.api import UnraidApiClient
+from awesomeversion import AwesomeVersion
+from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, UnraidAuthError
 from homeassistant.config_entries import ConfigEntryState
 
 from . import add_config_entry, setup_config_entry
-from .graphql_responses import (
-    API_RESPONSES,
-    API_RESPONSES_LATEST,
-    GraphqlResponses,
-    GraphqlResponses410,
-)
+from .api_states import API_STATES, ApiState
+from .const import DEFAULT_HOST
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
-
     from homeassistant.core import HomeAssistant
 
-    from tests.conftest import GraphqlServerMocker
+    from .conftest import MockApiClient
 
 
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_load_unload_entry(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test setup and unload config entry."""
-    mocker = await mock_graphql_server(api_responses)
-    entry = await setup_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    entry = await setup_config_entry(hass)
 
     assert entry.state is ConfigEntryState.LOADED
+    mock_api_client.assert_called_once_with(host=DEFAULT_HOST, api_key="test_key", session=ANY)
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
@@ -80,12 +77,11 @@ async def test_load_failure(
 
 async def test_load_failure_2(
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test setup and unload failure."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    mocker.responses.is_unauthenticated = True
-    entry = add_config_entry(hass, mocker)
+    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+    entry = add_config_entry(hass)
 
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -93,14 +89,16 @@ async def test_load_failure_2(
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
 
-    mocker.responses.all_error = True
+    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
 
-    mocker.responses = GraphqlResponses410()
+    mock_api_client.side_effect = IncompatibleApiError(
+        AwesomeVersion("4.10.0"), AwesomeVersion("4.20.0")
+    )
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 

@@ -8,27 +8,28 @@ import pytest
 from awesomeversion import AwesomeVersion
 
 from . import setup_config_entry
+from .api_states import API_STATES, ApiState
 from .const import MOCK_OPTION_DATA_DISABLED
-from .graphql_responses import API_RESPONSES, API_RESPONSES_LATEST, GraphqlResponses
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from unittest.mock import MagicMock
 
     from homeassistant.core import HomeAssistant
 
-    from tests.conftest import GraphqlServerMocker
+    from .conftest import MockApiClient
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_main_sensors(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test main sensor entities."""
-    mocker = await mock_graphql_server(api_responses)
-    assert await setup_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
 
     # array_state
     state = hass.states.get("sensor.test_server_array_state")
@@ -69,7 +70,7 @@ async def test_main_sensors(
     state = hass.states.get("sensor.test_server_cpu_utilization")
     assert state.state == "5.1"
 
-    if api_responses.version >= AwesomeVersion("4.26.0"):
+    if api_state.version >= AwesomeVersion("4.26.0"):
         # cpu_temp
         state = hass.states.get("sensor.test_server_cpu_temperature")
         assert state.state == "31.0"
@@ -87,15 +88,16 @@ async def test_main_sensors(
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_disk_sensors(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test disk sensor entities."""
-    mocker = await mock_graphql_server(api_responses)
-    assert await setup_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
 
     # disk_status
     state = hass.states.get("sensor.test_server_parity_status")
@@ -141,11 +143,10 @@ async def test_disk_sensors(
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_disk_sensors_disabled(
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,  # noqa: ARG001
 ) -> None:
     """Test disk sensor disabled."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    assert await setup_config_entry(hass, mocker, options=MOCK_OPTION_DATA_DISABLED)
+    assert await setup_config_entry(hass, options=MOCK_OPTION_DATA_DISABLED)
 
     state = hass.states.get("sensor.test_server_parity_status")
     assert state is None
@@ -158,15 +159,16 @@ async def test_disk_sensors_disabled(
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_share_sensors(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test share sensor entities."""
-    mocker = await mock_graphql_server(api_responses)
-    assert await setup_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
 
     # share_free
     state = hass.states.get("sensor.test_server_share_1_free_space")
@@ -187,11 +189,10 @@ async def test_share_sensors(
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_share_sensors_disabled(
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,  # noqa: ARG001
 ) -> None:
     """Test share sensor disabled."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    assert await setup_config_entry(hass, mocker, options=MOCK_OPTION_DATA_DISABLED)
+    assert await setup_config_entry(hass, options=MOCK_OPTION_DATA_DISABLED)
 
     state = hass.states.get("sensor.test_server_share_1_free_space")
     assert state is None
@@ -201,16 +202,17 @@ async def test_share_sensors_disabled(
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_ups_sensors(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test main sensor entities."""
-    mocker = await mock_graphql_server(api_responses)
-    assert await setup_config_entry(hass, mocker)
-    if api_responses.version >= AwesomeVersion("4.26.0"):
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
+    if api_state.version >= AwesomeVersion("4.26.0"):
         # ups_status
         state = hass.states.get("sensor.back_ups_es_650g2_status")
         assert state.state == "ONLINE"

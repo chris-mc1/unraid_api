@@ -7,27 +7,28 @@ from typing import TYPE_CHECKING
 import pytest
 
 from . import setup_config_entry
+from .api_states import API_STATES, ApiState
 from .const import MOCK_OPTION_DATA_DISABLED
-from .graphql_responses import API_RESPONSES, API_RESPONSES_LATEST, GraphqlResponses
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from unittest.mock import MagicMock
 
     from homeassistant.core import HomeAssistant
 
-    from tests.conftest import GraphqlServerMocker
+    from .conftest import MockApiClient
 
 
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_main_binary_sensor(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test disk sensor entities."""
-    mocker = await mock_graphql_server(api_responses)
-    assert await setup_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
 
     state = hass.states.get("binary_sensor.test_server_parity_spinning")
     assert state.state == "off"
@@ -42,11 +43,10 @@ async def test_main_binary_sensor(
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_disk_sensors_disabled(
     hass: HomeAssistant,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,  # noqa: ARG001
 ) -> None:
     """Test disk sensor disabled."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    assert await setup_config_entry(hass, mocker, options=MOCK_OPTION_DATA_DISABLED)
+    assert await setup_config_entry(hass, options=MOCK_OPTION_DATA_DISABLED)
 
     state = hass.states.get("binary_sensor.test_server_parity_spinning")
     assert state is None

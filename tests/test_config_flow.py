@@ -7,37 +7,38 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
-from custom_components.unraid_api.api import UnraidApiClient
+from awesomeversion import AwesomeVersion
+from custom_components.unraid_api.api import (
+    IncompatibleApiError,
+    UnraidAuthError,
+    UnraidGraphQLError,
+)
 from custom_components.unraid_api.const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
 
 from . import add_config_entry
-from .graphql_responses import (
-    API_RESPONSES,
-    API_RESPONSES_LATEST,
-    GraphqlResponses,
-    GraphqlResponses410,
-)
+from .api_states import API_STATES, ApiState
+from .const import DEFAULT_HOST
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
-
     from homeassistant.core import HomeAssistant
 
-    from tests.conftest import GraphqlServerMocker
+    from .conftest import MockApiClient
 
 
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_user_init(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test config flow."""
-    mocker = await mock_graphql_server(api_responses)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
 
     assert result["type"] is FlowResultType.FORM
@@ -46,7 +47,7 @@ async def test_user_init(
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_HOST: mocker.host, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
+        user_input={CONF_HOST: DEFAULT_HOST, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
     )
 
     assert result["type"] is FlowResultType.FORM
@@ -61,7 +62,7 @@ async def test_user_init(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Test Server"
     assert result["data"][CONF_API_KEY] == "test_key"
-    assert result["data"][CONF_HOST] == mocker.host
+    assert result["data"][CONF_HOST] == DEFAULT_HOST
     assert result["data"][CONF_VERIFY_SSL] is False
     assert result["options"][CONF_SHARES] is True
     assert result["options"][CONF_DRIVES] is True
@@ -72,15 +73,16 @@ async def test_user_init(
 async def test_user_error_response(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a config flow flow with GraphQL error response."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    mocker.responses.all_error = True
+    mock_api_client.side_effect = UnraidGraphQLError(
+        response={"errors": [{"message": "Internal Server error"}]}
+    )
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_HOST: mocker.host, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
+        user_input={CONF_HOST: DEFAULT_HOST, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
@@ -94,12 +96,11 @@ async def test_user_error_response(
 async def test_user_connection_failed_timeout(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a config flow with TimeoutError."""
-    monkeypatch.setattr(
-        UnraidApiClient, "call_api", AsyncMock(side_effect=TimeoutError()), raising=True
-    )
+    mock_api_client.side_effect = TimeoutError()
+
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -116,12 +117,11 @@ async def test_user_connection_failed_timeout(
 async def test_user_connection_failed_connection_error(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a config flow with ClientConnectionError."""
-    monkeypatch.setattr(
-        UnraidApiClient, "call_api", AsyncMock(side_effect=ClientConnectionError()), raising=True
-    )
+    mock_api_client.side_effect = ClientConnectionError()
+
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -138,15 +138,11 @@ async def test_user_connection_failed_connection_error(
 async def test_user_connection_failed_ssl_error(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a config flow with ClientConnectorSSLError."""
-    monkeypatch.setattr(
-        UnraidApiClient,
-        "call_api",
-        AsyncMock(side_effect=ClientConnectorSSLError(MagicMock(), MagicMock())),
-        raising=True,
-    )
+    mock_api_client.side_effect = ClientConnectorSSLError(MagicMock(), MagicMock())
+
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -163,15 +159,17 @@ async def test_user_connection_failed_ssl_error(
 async def test_user_connection_incompatible(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
-    """Test a config flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(GraphqlResponses410)
+    """Test a config flow with IncompatibleApiError."""
+    mock_api_client.side_effect = IncompatibleApiError(
+        AwesomeVersion("4.10.0"), AwesomeVersion("4.20.0")
+    )
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_HOST: mocker.host, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
+        user_input={CONF_HOST: DEFAULT_HOST, CONF_API_KEY: "test_key", CONF_VERIFY_SSL: False},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
@@ -184,16 +182,16 @@ async def test_user_connection_incompatible(
 async def test_user_connection_auth_failed(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
-    """Test a config flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    mocker.responses.is_unauthenticated = True
+    """Test a config flow with UnraidAuthError."""
+    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
-            CONF_HOST: mocker.host,
+            CONF_HOST: DEFAULT_HOST,
             CONF_API_KEY: "test_key",
             CONF_VERIFY_SSL: False,
         },
@@ -206,16 +204,18 @@ async def test_user_connection_auth_failed(
     mock_setup_entry.assert_not_awaited()
 
 
-@pytest.mark.parametrize(("api_responses"), API_RESPONSES)
+@pytest.mark.parametrize(("api_state"), API_STATES)
 async def test_reauth(
-    api_responses: GraphqlResponses,
+    api_state: ApiState,
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow."""
-    mocker = await mock_graphql_server(api_responses)
-    mock_config = add_config_entry(hass, mocker)
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+
+    mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
     assert result["type"] is FlowResultType.FORM
@@ -230,7 +230,7 @@ async def test_reauth(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert mock_config.data[CONF_API_KEY] == "new_key"
-    assert mock_config.data[CONF_HOST] == mocker.host
+    assert mock_config.data[CONF_HOST] == DEFAULT_HOST
     assert mock_config.data[CONF_VERIFY_SSL] is False
 
     await hass.async_block_till_done()
@@ -240,12 +240,14 @@ async def test_reauth(
 async def test_reauth_error_response(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with GraphQL error response."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    mocker.responses.all_error = True
-    mock_config = add_config_entry(hass, mocker)
+    mock_api_client.side_effect = UnraidGraphQLError(
+        response={"errors": [{"message": "Internal Server error"}]}
+    )
+
+    mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
 
@@ -268,12 +270,11 @@ async def test_reauth_error_response(
 async def test_reauth_connection_failed_timeout(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with TimeoutError."""
-    monkeypatch.setattr(
-        UnraidApiClient, "call_api", AsyncMock(side_effect=TimeoutError()), raising=True
-    )
+    mock_api_client.side_effect = TimeoutError()
+
     mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
@@ -296,12 +297,11 @@ async def test_reauth_connection_failed_timeout(
 async def test_reauth_connection_failed_connection_error(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with ClientConnectionError."""
-    monkeypatch.setattr(
-        UnraidApiClient, "call_api", AsyncMock(side_effect=ClientConnectionError()), raising=True
-    )
+    mock_api_client.side_effect = ClientConnectionError()
+
     mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
@@ -324,15 +324,11 @@ async def test_reauth_connection_failed_connection_error(
 async def test_reauth_connection_failed_ssl_error(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    monkeypatch: pytest.MonkeyPatch,
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with ClientConnectorSSLError."""
-    monkeypatch.setattr(
-        UnraidApiClient,
-        "call_api",
-        AsyncMock(side_effect=ClientConnectorSSLError(MagicMock(), MagicMock())),
-        raising=True,
-    )
+    mock_api_client.side_effect = ClientConnectorSSLError(MagicMock(), MagicMock())
+
     mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
@@ -355,12 +351,12 @@ async def test_reauth_connection_failed_ssl_error(
 async def test_reauth_connection_auth_failed(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+    mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with ClientConnectorSSLError."""
-    mocker = await mock_graphql_server(API_RESPONSES_LATEST)
-    mocker.responses.is_unauthenticated = True
-    mock_config = add_config_entry(hass, mocker)
+    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+
+    mock_config = add_config_entry(hass)
 
     result = await mock_config.start_reauth_flow(hass)
 
@@ -383,7 +379,7 @@ async def test_options(
     hass: HomeAssistant,
     mock_setup_entry: AsyncMock,
 ) -> None:
-    """Test Reconfigure flow."""
+    """Test Options flow."""
     mock_config = add_config_entry(hass)
 
     result = await hass.config_entries.options.async_init(mock_config.entry_id)

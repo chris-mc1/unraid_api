@@ -2,23 +2,35 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
-from unittest import mock
-from unittest.mock import AsyncMock, patch
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from aiohttp import ClientSession, web
+from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
-from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
+
+from .api_states import API_STATE_LATEST, ApiState
 
 if TYPE_CHECKING:
     from asyncio import AbstractEventLoop
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator
+    from collections.abc import (
+        AsyncGenerator,
+        AsyncIterator,
+        Awaitable,
+        Callable,
+        Generator,
+    )
 
-    from homeassistant.core import Event, HomeAssistant
-    from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+    from awesomeversion import AwesomeVersion
+    from custom_components.unraid_api.models import (
+        Array,
+        Disk,
+        Metrics,
+        ServerInfo,
+        Share,
+        UpsDevice,
+    )
 
     from .graphql_responses import GraphqlResponses
 
@@ -112,23 +124,47 @@ async def mock_graphql_server(
         await mocks.pop().close()
 
 
-@contextmanager
-def mock_aiohttp_client(mocker: GraphqlServerMocker) -> Iterator[AiohttpClientMocker]:
-    """Context manager to mock aiohttp client."""
+class MockApiClient:
+    """Mock GraphQL API Client."""
 
-    def create_session(hass: HomeAssistant, *args: Any, **kwargs: Any) -> ClientSession:  # noqa: ARG001
-        session = mocker.create_session(hass.loop)
+    state: ApiState
 
-        async def close_session(event: Event) -> None:  # noqa: ARG001
-            """Close session."""
-            await session.close()
+    def __init__(self, state: type[ApiState]) -> None:
+        self.state = state()
 
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, close_session)
+    @property
+    def version(self) -> AwesomeVersion:
+        return self.state.version
 
-        return session
+    async def query_server_info(self) -> ServerInfo:
+        return self.state.server_info
 
-    with mock.patch(
-        "homeassistant.helpers.aiohttp_client._async_create_clientsession",
-        side_effect=create_session,
-    ):
-        yield mocker
+    async def query_metrics(self) -> Metrics:
+        return self.state.metrics
+
+    async def query_shares(self) -> list[Share]:
+        return self.state.shares
+
+    async def query_disks(self) -> list[Disk]:
+        return self.state.disks
+
+    async def query_array(self) -> Array:
+        return self.state.array
+
+    async def query_ups(self) -> list[UpsDevice]:
+        return self.state.ups
+
+    async def subscribe_cpu_total(self) -> AsyncIterator[float]:
+        pass
+
+
+@pytest.fixture
+def mock_api_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[MagicMock]:
+    """Override get_api_client."""
+    mock_api_client = AsyncMock(return_value=MockApiClient(API_STATE_LATEST))
+    with monkeypatch.context() as m:
+        m.setattr("custom_components.unraid_api.config_flow.get_api_client", mock_api_client)
+        m.setattr("custom_components.unraid_api.get_api_client", mock_api_client)
+        yield mock_api_client
