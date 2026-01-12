@@ -10,34 +10,21 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, ValidationError
 
+from custom_components.unraid_api.exceptions import (
+    GraphQLError,
+    GraphQLInvalidMessageError,
+    GraphQLMultiError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+    UnraidApiInvalidResponseError,
+)
+
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
     from unraid_api.models import Array, Disk, Metrics, ServerInfo, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class UnraidGraphQLError(Exception):
-    """Raised when the response contains errors."""
-
-    def __init__(self, response: dict, *args: Any) -> None:
-        self.response = response
-        error_msg = ", ".join({entry.get("message") for entry in response["errors"]})
-        super().__init__(error_msg, *args)
-
-
-class UnraidAuthError(UnraidGraphQLError):
-    """Raised when the request was unauthorized."""
-
-
-class IncompatibleApiError(Exception):
-    """Raised when the response contains errors."""
-
-    def __init__(self, version: AwesomeVersion, min_version: AwesomeVersion, *args: Any) -> None:
-        self.version = version
-        self.min_version = min_version
-        super().__init__(*args)
 
 
 def _import_client_class(
@@ -93,16 +80,29 @@ class UnraidApiClient:
                 "content-type": "application/json",
             },
         )
-        result = await response.json()
+
+        response.raise_for_status()
+
+        try:
+            result = await response.json()
+        except json.JSONDecodeError as exc:
+            raise UnraidApiInvalidResponseError(response=response) from exc
+
         if "errors" in result:
             try:
                 if result["errors"][0]["extensions"]["code"] == "UNAUTHENTICATED":
-                    raise UnraidAuthError(response=result)
-            except KeyError:
+                    raise GraphQLUnauthorizedError(result["errors"][0])
+            except (KeyError, IndexError):
                 pass
-            raise UnraidGraphQLError(response=result)
 
-        return model.model_validate(result["data"])
+            if len(result["errors"]) > 1:
+                raise GraphQLMultiError(result["errors"])
+            raise GraphQLError(result["errors"][0])
+        try:
+            return model.model_validate(result["data"])
+        except ValidationError as exc:
+            raise UnraidApiInvalidResponseError(response=response) from exc
+
 
     async def query_api_version(self) -> AwesomeVersion:
         try:

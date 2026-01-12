@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from aiohttp import ClientConnectionError, ClientSSLError
 from awesomeversion import AwesomeVersion
-from custom_components.unraid_api.api import (
-    IncompatibleApiError,
-    UnraidAuthError,
-    UnraidGraphQLError,
-)
 from custom_components.unraid_api.const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from custom_components.unraid_api.exceptions import (
+    GraphQLError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+)
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
@@ -76,9 +76,7 @@ async def test_user_error_response(
     mock_api_client: MagicMock,
 ) -> None:
     """Test a config flow flow with GraphQL error response."""
-    mock_api_client.side_effect = UnraidGraphQLError(
-        response={"errors": [{"message": "Internal Server error"}]}
-    )
+    mock_api_client.side_effect = GraphQLError({"message": "Internal Server error"})
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -140,8 +138,8 @@ async def test_user_connection_failed_ssl_error(
     mock_setup_entry: AsyncMock,
     mock_api_client: MagicMock,
 ) -> None:
-    """Test a config flow with ClientConnectorSSLError."""
-    mock_api_client.side_effect = ClientConnectorSSLError(MagicMock(), MagicMock())
+    """Test a config flow with ClientSSLError."""
+    mock_api_client.side_effect = ClientSSLError(MagicMock(), MagicMock())
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
@@ -184,8 +182,8 @@ async def test_user_connection_auth_failed(
     mock_setup_entry: AsyncMock,
     mock_api_client: MagicMock,
 ) -> None:
-    """Test a config flow with UnraidAuthError."""
-    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+    """Test a config flow with GraphQLUnauthorizedError."""
+    mock_api_client.side_effect = GraphQLUnauthorizedError({"message": "API key validation failed"})
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
@@ -243,9 +241,7 @@ async def test_reauth_error_response(
     mock_api_client: MagicMock,
 ) -> None:
     """Test a reauthentication flow with GraphQL error response."""
-    mock_api_client.side_effect = UnraidGraphQLError(
-        response={"errors": [{"message": "Internal Server error"}]}
-    )
+    mock_api_client.side_effect = GraphQLError({"message": "Internal Server error"})
 
     mock_config = add_config_entry(hass)
 
@@ -326,8 +322,8 @@ async def test_reauth_connection_failed_ssl_error(
     mock_setup_entry: AsyncMock,
     mock_api_client: MagicMock,
 ) -> None:
-    """Test a reauthentication flow with ClientConnectorSSLError."""
-    mock_api_client.side_effect = ClientConnectorSSLError(MagicMock(), MagicMock())
+    """Test a reauthentication flow with ClientSSLError."""
+    mock_api_client.side_effect = ClientSSLError(MagicMock(), MagicMock())
 
     mock_config = add_config_entry(hass)
 
@@ -353,8 +349,8 @@ async def test_reauth_connection_auth_failed(
     mock_setup_entry: AsyncMock,
     mock_api_client: MagicMock,
 ) -> None:
-    """Test a reauthentication flow with ClientConnectorSSLError."""
-    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+    """Test a reauthentication flow with GraphQLUnauthorizedError."""
+    mock_api_client.side_effect = GraphQLUnauthorizedError({"message": "API key validation failed"})
 
     mock_config = add_config_entry(hass)
 

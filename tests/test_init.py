@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
-from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from aiohttp import ClientConnectionError, ClientSSLError
 from awesomeversion import AwesomeVersion
-from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, UnraidAuthError
+from custom_components.unraid_api.api import UnraidApiClient
+from custom_components.unraid_api.exceptions import GraphQLUnauthorizedError, IncompatibleApiError
 from homeassistant.config_entries import ConfigEntryState
 
 from . import add_config_entry, setup_config_entry
@@ -50,7 +51,7 @@ async def test_load_failure(
     monkeypatch.setattr(UnraidApiClient, "call_api", mock_call_api, raising=True)
     entry = add_config_entry(hass)
 
-    mock_call_api.side_effect = ClientConnectorSSLError(MagicMock(), MagicMock())
+    mock_call_api.side_effect = ClientSSLError(MagicMock(), MagicMock())
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
@@ -80,7 +81,7 @@ async def test_load_failure_2(
     mock_api_client: MagicMock,
 ) -> None:
     """Test setup and unload failure."""
-    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+    mock_api_client.side_effect = GraphQLUnauthorizedError({"message": "API key validation failed"})
     entry = add_config_entry(hass)
 
     await hass.config_entries.async_setup(entry.entry_id)
@@ -89,7 +90,7 @@ async def test_load_failure_2(
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
 
-    mock_api_client.side_effect = UnraidAuthError(response={"errors": []})
+    mock_api_client.side_effect = GraphQLUnauthorizedError({"message": "API key validation failed"})
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 

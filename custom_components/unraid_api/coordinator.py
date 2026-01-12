@@ -11,10 +11,17 @@ from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pydantic_core import ValidationError
 
-from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .exceptions import (
+    GraphQLError,
+    GraphQLMultiError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+    UnraidApiError,
+    UnraidApiInvalidResponseError,
+)
+from .models import Metrics
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -94,21 +101,21 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 translation_key="cannot_connect",
                 translation_placeholders={"error": str(exc)},
             ) from exc
-        except* UnraidAuthError as exc:
+        except* GraphQLUnauthorizedError as exc:
             _LOGGER.debug("Update: Auth failed")
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="auth_failed",
-                translation_placeholders={"error_msg": exc.args[0]},
+                translation_placeholders={"error_msg": (exc)},
             ) from exc
-        except* UnraidGraphQLError as exc:
-            _LOGGER.debug("Update: GraphQL Error response: %s", exc.exceptions[0].response)
+        except* (GraphQLError, GraphQLMultiError) as exc:
+            _LOGGER.debug("Update: GraphQL Error response: %s", str(exc))
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="error_response",
-                translation_placeholders={"error_msg": exc.exceptions[0].args[0]},
+                translation_placeholders={"error_msg": str(exc)},
             ) from exc
-        except* ValidationError as exc:
+        except* UnraidApiInvalidResponseError as exc:
             _LOGGER.debug("Update: invalid data")
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -169,7 +176,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 if device.id not in self.known_ups_devices:
                     self.known_ups_devices.add(device.id)
                     self._do_callback(self.ups_callbacks, device)
-        except UnraidGraphQLError:
+        except UnraidApiError:
             pass
 
         data["ups_devices"] = devices
