@@ -7,13 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from aiohttp import web
+from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient, TestServer
 
 from .api_states import API_STATE_LATEST, ApiState
 
 if TYPE_CHECKING:
-    from asyncio import AbstractEventLoop
     from collections.abc import (
         AsyncGenerator,
         AsyncIterator,
@@ -24,9 +23,8 @@ if TYPE_CHECKING:
 
     from awesomeversion import AwesomeVersion
     from custom_components.unraid_api.models import (
-        Array,
         Disk,
-        Metrics,
+        MetricsArray,
         ServerInfo,
         Share,
         UpsDevice,
@@ -50,8 +48,8 @@ class GraphqlServerMocker:
         self.responses = response_set()
         self.app = web.Application()
         self.app.add_routes([web.post("/graphql", self.handler)])
-        self.server = TestServer(self.app)
-        self.clients = set[GraphqlServerMocker]()
+        self.server = TestServer(self.app, skip_url_asserts=True)
+        self.clients = set[ClientSession]()
 
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -60,9 +58,9 @@ class GraphqlServerMocker:
         response = self.responses.get_response(query)
         return web.json_response(data=response)
 
-    def create_session(self, loop: AbstractEventLoop | None = None) -> TestClient:
+    def create_session(self) -> TestClient:
         """Create a ClientSession that is bound to this mocker."""
-        client = TestClient(self.server, loop=loop)
+        client = ClientSession()
         self.clients.add(client)
         return client
 
@@ -139,17 +137,14 @@ class MockApiClient:
     async def query_server_info(self) -> ServerInfo:
         return self.state.server_info
 
-    async def query_metrics(self) -> Metrics:
-        return self.state.metrics
+    async def query_metrics_array(self) -> MetricsArray:
+        return self.state.metrics_array
 
     async def query_shares(self) -> list[Share]:
         return self.state.shares
 
     async def query_disks(self) -> list[Disk]:
         return self.state.disks
-
-    async def query_array(self) -> Array:
-        return self.state.array
 
     async def query_ups(self) -> list[UpsDevice]:
         return self.state.ups

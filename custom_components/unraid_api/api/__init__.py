@@ -22,7 +22,13 @@ from custom_components.unraid_api.exceptions import (
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
-    from unraid_api.models import Array, Disk, Metrics, ServerInfo, Share, UpsDevice
+    from custom_components.unraid_api.models import (
+        Disk,
+        MetricsArray,
+        ServerInfo,
+        Share,
+        UpsDevice,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,7 +122,7 @@ class UnraidApiClient:
         pass
 
     @abstractmethod
-    async def query_metrics(self) -> Metrics:
+    async def query_metrics_array(self) -> MetricsArray:
         pass
 
     @abstractmethod
@@ -125,10 +131,6 @@ class UnraidApiClient:
 
     @abstractmethod
     async def query_disks(self) -> list[Disk]:
-        pass
-
-    @abstractmethod
-    async def query_array(self) -> Array:
         pass
 
     @abstractmethod

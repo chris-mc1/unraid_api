@@ -28,7 +28,9 @@ async def test_get_api_client(
     """Test get_api_client."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
 
     assert api_client.version == api_responses.version
 
@@ -41,7 +43,7 @@ async def test_get_api_client_incompatible(
     session = mocker.create_session()
 
     with pytest.raises(IncompatibleApiError):
-        await get_api_client("", "test_key", session)
+        await get_api_client(f"{mocker.server.host}:{mocker.server.port}", "test_key", session)
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
@@ -52,7 +54,7 @@ async def test_api_version(
     """Test querying api version."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = UnraidApiClient("", "test_key", session)
+    api_client = UnraidApiClient(f"{mocker.server.host}:{mocker.server.port}", "test_key", session)
 
     api_version = await api_client.query_api_version()
 
@@ -67,7 +69,9 @@ async def test_server_info(
     """Test querying server info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
 
     server_info = await api_client.query_server_info()
 
@@ -77,23 +81,28 @@ async def test_server_info(
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_metrics(
+async def test_metrics_array(
     api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
-    """Test querying metrics."""
+    """Test querying metrics and array."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
+    metrics_array = await api_client.query_metrics_array()
 
-    metrics = await api_client.query_metrics()
-
-    assert metrics.memory_free == 415510528
-    assert metrics.memory_total == 16646950912
-    assert metrics.memory_active == 12746354688
-    assert metrics.memory_percent_total == 76.56870471583932
-    assert metrics.memory_available == 3900596224
-    assert metrics.cpu_percent_total == 5.1
+    assert metrics_array.memory_free == 415510528
+    assert metrics_array.memory_total == 16646950912
+    assert metrics_array.memory_active == 12746354688
+    assert metrics_array.memory_percent_total == 76.56870471583932
+    assert metrics_array.memory_available == 3900596224
+    assert metrics_array.cpu_percent_total == 5.1
+    assert metrics_array.state == ArrayState.STARTED
+    assert metrics_array.capacity_free == 523094720
+    assert metrics_array.capacity_used == 11474981430
+    assert metrics_array.capacity_total == 11998076150
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
@@ -104,8 +113,9 @@ async def test_shares(
     """Test querying share info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
-
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
     shares = await api_client.query_shares()
 
     assert shares[0].name == "Share_1"
@@ -131,8 +141,9 @@ async def test_disks(
     """Test querying disk info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
-
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
     disks = await api_client.query_disks()
 
     assert disks[0].name == "disk1"
@@ -164,21 +175,3 @@ async def test_disks(
     assert disks[2].type == DiskType.Parity
     assert disks[2].id == "4d5"
     assert disks[2].is_spinning is False
-
-
-@pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_array(
-    api_responses: GraphqlResponses,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
-) -> None:
-    """Test querying array info."""
-    mocker = await mock_graphql_server(api_responses)
-    session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
-
-    array = await api_client.query_array()
-
-    assert array.state == ArrayState.STARTED
-    assert array.capacity_free == 523094720
-    assert array.capacity_used == 11474981430
-    assert array.capacity_total == 11998076150

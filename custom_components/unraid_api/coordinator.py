@@ -21,7 +21,7 @@ from .exceptions import (
     UnraidApiError,
     UnraidApiInvalidResponseError,
 )
-from .models import Metrics
+from .models import MetricsArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -30,14 +30,13 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share, UpsDevice
+    from .models import Disk, MetricsArray, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UnraidServerData(TypedDict):  # noqa: D101
-    metrics: Metrics | None
-    array: Array | None
+    metrics_array: MetricsArray | None
     disks: dict[str, Disk]
     shares: dict[str, Share]
     ups_devices: dict[str, UpsDevice]
@@ -76,7 +75,6 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._update_metrics(data))
-                tg.create_task(self._update_array(data))
                 if self.config_entry.options[CONF_DRIVES]:
                     tg.create_task(self._update_disks(data))
                 if self.config_entry.options[CONF_SHARES]:
@@ -139,10 +137,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         return data
 
     async def _update_metrics(self, data: UnraidServerData) -> None:
-        data["metrics"] = await self.api_client.query_metrics()
-
-    async def _update_array(self, data: UnraidServerData) -> None:
-        data["array"] = await self.api_client.query_array()
+        data["metrics_array"] = await self.api_client.query_metrics_array()
 
     async def _update_disks(self, data: UnraidServerData) -> None:
         disks = {}

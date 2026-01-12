@@ -49,7 +49,7 @@ class ServerInfo:
 
 
 @dataclass
-class Metrics:
+class MetricsArray:
     """Metrics."""
 
     memory_free: int
@@ -58,6 +58,10 @@ class Metrics:
     memory_available: int
     memory_percent_total: float
     cpu_percent_total: float
+    state: ArrayState
+    capacity_free: int
+    capacity_used: int
+    capacity_total: int
     cpu_temp: float | None = None
     cpu_power: float | None = None
 
@@ -87,16 +91,6 @@ class Disk:
     type: DiskType
     id: str
     is_spinning: bool
-
-
-@dataclass
-class Array:
-    """Array."""
-
-    state: ArrayState
-    capacity_free: int
-    capacity_used: int
-    capacity_total: int
 
 
 @dataclass

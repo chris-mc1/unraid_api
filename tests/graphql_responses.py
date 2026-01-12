@@ -13,10 +13,9 @@ class GraphqlResponses:
     version = AwesomeVersion("4.20.0")
     api_version: ClassVar[dict]
     server_info: ClassVar[dict]
-    metrics: ClassVar[dict]
+    metrics_array: ClassVar[dict]
     shares: ClassVar[dict]
     disks: ClassVar[dict]
-    array: ClassVar[dict]
     ups: ClassVar[dict]
 
     is_unauthenticated = False
@@ -73,14 +72,12 @@ class GraphqlResponses:
                     return self.api_version
                 case "ServerInfo":
                     return self.server_info
-                case "Metrics":
-                    return self.metrics
+                case "MetricsArray":
+                    return self.metrics_array
                 case "Shares":
                     return self.shares
                 case "Disks":
                     return self.disks
-                case "Array":
-                    return self.array
                 case "UpsDevices":
                     return self.ups
                 case _:
@@ -102,7 +99,7 @@ class GraphqlResponses420(GraphqlResponses):
                 "info": {"versions": {"core": {"unraid": "7.0.1"}}},
             }
         }
-        self.metrics = {
+        self.metrics_array = {
             "data": {
                 "metrics": {
                     "memory": {
@@ -113,7 +110,17 @@ class GraphqlResponses420(GraphqlResponses):
                         "available": 3900596224,
                     },
                     "cpu": {"percentTotal": 5.1},
-                }
+                },
+                "array": {
+                    "state": "STARTED",
+                    "capacity": {
+                        "kilobytes": {
+                            "free": "523094720",
+                            "used": "11474981430",
+                            "total": "11998076150",
+                        }
+                    },
+                },
             }
         }
 
@@ -184,20 +191,6 @@ class GraphqlResponses420(GraphqlResponses):
                 }
             }
         }
-        self.array = {
-            "data": {
-                "array": {
-                    "state": "STARTED",
-                    "capacity": {
-                        "kilobytes": {
-                            "free": "523094720",
-                            "used": "11474981430",
-                            "total": "11998076150",
-                        }
-                    },
-                }
-            }
-        }
         self.not_found = {
             "errors": [
                 {
@@ -217,7 +210,7 @@ class GraphqlResponses426(GraphqlResponses420):
     def __init__(self) -> None:
         super().__init__()
         self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.26.0"}}}}}
-        self.metrics = {
+        self.metrics_array = {
             "data": {
                 "metrics": {
                     "memory": {
@@ -230,6 +223,16 @@ class GraphqlResponses426(GraphqlResponses420):
                     "cpu": {"percentTotal": 5.1},
                 },
                 "info": {"cpu": {"packages": {"power": [2.8], "temp": [31]}}},
+                "array": {
+                    "state": "STARTED",
+                    "capacity": {
+                        "kilobytes": {
+                            "free": "523094720",
+                            "used": "11474981430",
+                            "total": "11998076150",
+                        }
+                    },
+                },
             }
         }
         self.ups = {

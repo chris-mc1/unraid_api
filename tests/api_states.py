@@ -6,12 +6,11 @@ from typing import ClassVar
 
 from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.models import (
-    Array,
     ArrayState,
     Disk,
     DiskStatus,
     DiskType,
-    Metrics,
+    MetricsArray,
     ServerInfo,
     Share,
     UpsDevice,
@@ -23,10 +22,9 @@ class ApiState:
 
     version: AwesomeVersion
     server_info: ClassVar[ServerInfo]
-    metrics: ClassVar[Metrics]
+    metrics_array: ClassVar[MetricsArray]
     shares: ClassVar[list[Share]]
     disks: ClassVar[list[Disk]]
-    array: ClassVar[Array]
     ups: ClassVar[list[UpsDevice]]
 
 
@@ -39,13 +37,17 @@ class ApiState420(ApiState):
         self.server_info = ServerInfo(
             localurl="http://1.2.3.4", name="Test Server", unraid_version="7.0.1"
         )
-        self.metrics = Metrics(
+        self.metrics_array = MetricsArray(
             memory_free=415510528,
             memory_total=16646950912,
             memory_active=12746354688,
             memory_available=3900596224,
             memory_percent_total=76.56870471583932,
             cpu_percent_total=5.1,
+            state=ArrayState.STARTED,
+            capacity_free=523094720,
+            capacity_used=11474981430,
+            capacity_total=11998076150,
         )
         self.shares = [
             Share(
@@ -100,12 +102,6 @@ class ApiState420(ApiState):
                 is_spinning=True,
             ),
         ]
-        self.array = Array(
-            state=ArrayState.STARTED,
-            capacity_free=523094720,
-            capacity_used=11474981430,
-            capacity_total=11998076150,
-        )
         self.ups = None
 
 
@@ -117,8 +113,8 @@ class ApiState426(ApiState420):
     def __init__(self) -> None:
         super().__init__()
 
-        self.metrics.cpu_power = 2.8
-        self.metrics.cpu_temp = 31.0
+        self.metrics_array.cpu_power = 2.8
+        self.metrics_array.cpu_temp = 31.0
         self.ups = [
             UpsDevice(
                 id="Back-UPS ES 650G2",

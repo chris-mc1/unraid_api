@@ -6,12 +6,11 @@ from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
 from custom_components.unraid_api.models import (
-    Array,
     ArrayState,
     Disk,
     DiskStatus,
     DiskType,
-    Metrics,
+    MetricsArray,
     ServerInfo,
     Share,
 )
@@ -36,15 +35,19 @@ class UnraidApiV420(UnraidApiClient):
             unraid_version=response.info.versions.core.unraid,
         )
 
-    async def query_metrics(self) -> Metrics:
-        response = await self.call_api(METRICS_QUERY, MetricsQuery)
-        return Metrics(
+    async def query_metrics_array(self) -> MetricsArray:
+        response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
+        return MetricsArray(
             memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
             memory_available=response.metrics.memory.available,
             memory_percent_total=response.metrics.memory.percent_total,
             cpu_percent_total=response.metrics.cpu.percent_total,
+            state=response.array.state,
+            capacity_free=response.array.capacity.kilobytes.free,
+            capacity_used=response.array.capacity.kilobytes.used,
+            capacity_total=response.array.capacity.kilobytes.total,
         )
 
     async def query_shares(self) -> list[Share]:
@@ -111,15 +114,6 @@ class UnraidApiV420(UnraidApiClient):
         )
         return disks
 
-    async def query_array(self) -> Array:
-        response = await self.call_api(ARRAY_QUERY, ArrayQuery)
-        return Array(
-            state=response.array.state,
-            capacity_free=response.array.capacity.kilobytes.free,
-            capacity_used=response.array.capacity.kilobytes.used,
-            capacity_total=response.array.capacity.kilobytes.total,
-        )
-
 
 ## Queries
 
@@ -139,8 +133,8 @@ query ServerInfo {
 }
 """
 
-METRICS_QUERY = """
-query Metrics {
+METRICS_ARRAY_QUERY = """
+query MetricsArray {
   metrics {
     memory {
       free
@@ -151,6 +145,16 @@ query Metrics {
     }
     cpu {
       percentTotal
+    }
+  }
+  array {
+    state
+    capacity {
+      kilobytes {
+        free
+        used
+        total
+      }
     }
   }
 }
@@ -206,23 +210,6 @@ query Disks {
   }
 }
 """
-
-ARRAY_QUERY = """
-query Array {
-  array {
-    state
-    capacity {
-      kilobytes {
-        free
-        used
-        total
-      }
-    }
-  }
-}
-
-"""
-
 ## Api Models
 
 
@@ -249,9 +236,10 @@ class InfoVersionsCore(BaseModel):  # noqa: D101
     unraid: str
 
 
-### Metrics
-class MetricsQuery(BaseModel):  # noqa: D101
+### Metrics and Array
+class MetricsArrayQuery(BaseModel):  # noqa: D101
     metrics: _Metrics
+    array: _Array
 
 
 class _Metrics(BaseModel):
@@ -269,6 +257,21 @@ class MetricsMemory(BaseModel):  # noqa: D101
 
 class MetricsCpu(BaseModel):  # noqa: D101
     percent_total: float = Field(alias="percentTotal")
+
+
+class _Array(BaseModel):
+    state: ArrayState
+    capacity: ArrayCapacity
+
+
+class ArrayCapacity(BaseModel):  # noqa: D101
+    kilobytes: ArrayCapacityKilobytes
+
+
+class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
+    free: int
+    used: int
+    total: int
 
 
 ### Shares
@@ -309,23 +312,3 @@ class FSDisk(ParityDisk):  # noqa: D101
     fs_size: int | None = Field(alias="fsSize")
     fs_free: int | None = Field(alias="fsFree")
     fs_used: int | None = Field(alias="fsUsed")
-
-
-### Array
-class ArrayQuery(BaseModel):  # noqa: D101
-    array: _Array
-
-
-class _Array(BaseModel):
-    state: ArrayState
-    capacity: ArrayCapacity
-
-
-class ArrayCapacity(BaseModel):  # noqa: D101
-    kilobytes: ArrayCapacityKilobytes
-
-
-class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
-    free: int
-    used: int
-    total: int

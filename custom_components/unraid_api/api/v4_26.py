@@ -5,9 +5,9 @@ from __future__ import annotations
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
-from custom_components.unraid_api.models import Metrics, UpsDevice
+from custom_components.unraid_api.models import MetricsArray, UpsDevice
 
-from .v4_20 import UnraidApiV420, _Metrics
+from .v4_20 import UnraidApiV420, _Array, _Metrics
 
 
 class UnraidApiV426(UnraidApiV420):
@@ -19,9 +19,9 @@ class UnraidApiV426(UnraidApiV420):
 
     version = AwesomeVersion("4.26.0")
 
-    async def query_metrics(self) -> Metrics:
-        response = await self.call_api(METRICS_QUERY, MetricsQuery)
-        return Metrics(
+    async def query_metrics(self) -> MetricsArray:
+        response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
+        return MetricsArray(
             memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
@@ -53,7 +53,7 @@ class UnraidApiV426(UnraidApiV420):
 
 ## Queries
 
-METRICS_QUERY = """
+METRICS_ARRAY_QUERY = """
 query Metrics {
   metrics {
     memory {
@@ -65,6 +65,16 @@ query Metrics {
     }
     cpu {
       percentTotal
+    }
+  }
+  array {
+    state
+    capacity {
+      kilobytes {
+        free
+        used
+        total
+      }
     }
   }
   info {
@@ -102,9 +112,10 @@ query UpsDevices {
 ## Api Models
 
 
-### Metrics
-class MetricsQuery(BaseModel):  # noqa: D101
+### Metrics and Array
+class MetricsArrayQuery(BaseModel):  # noqa: D101
     metrics: _Metrics
+    array: _Array
     info: Info
 
 
