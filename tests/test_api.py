@@ -5,11 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from custom_components.unraid_api.api import (
-    IncompatibleApiError,
-    UnraidApiClient,
-    get_api_client,
-)
+from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, get_api_client
+from custom_components.unraid_api.api import _normalize_url as normalize_url
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
 
 from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
@@ -175,3 +172,26 @@ async def test_disks(
     assert disks[2].type == DiskType.Parity
     assert disks[2].id == "4d5"
     assert disks[2].is_spinning is False
+
+
+def test_normalize_url() -> None:
+    """Test URL normalization."""
+    assert str(normalize_url("192.168.1.10")) == "http://192.168.1.10"
+    assert str(normalize_url("http://192.168.1.10")) == "http://192.168.1.10"
+    assert str(normalize_url("https://192.168.1.10")) == "https://192.168.1.10"
+    assert str(normalize_url("192.168.1.10/graphql")) == "http://192.168.1.10"
+
+    assert str(normalize_url("192.168.1.10:8080")) == "http://192.168.1.10:8080"
+    assert str(normalize_url("http://192.168.1.10:8080")) == "http://192.168.1.10:8080"
+    assert str(normalize_url("https://192.168.1.10:8080")) == "https://192.168.1.10:8080"
+    assert str(normalize_url("192.168.1.10:8080/graphql")) == "http://192.168.1.10:8080"
+
+    assert str(normalize_url("unraid.lan")) == "http://unraid.lan"
+    assert str(normalize_url("http://unraid.lan")) == "http://unraid.lan"
+    assert str(normalize_url("https://unraid.lan")) == "https://unraid.lan"
+    assert str(normalize_url("unraid.lan/graphql")) == "http://unraid.lan"
+
+    assert str(normalize_url("unraid.lan:8080")) == "http://unraid.lan:8080"
+    assert str(normalize_url("http://unraid.lan:8080")) == "http://unraid.lan:8080"
+    assert str(normalize_url("https://unraid.lan:8080")) == "https://unraid.lan:8080"
+    assert str(normalize_url("unraid.lan:8080/graphql")) == "http://unraid.lan:8080"

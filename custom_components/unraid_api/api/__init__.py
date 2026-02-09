@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, TypeVar
 
+import yarl
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, ValidationError
 
 from custom_components.unraid_api.exceptions import (
     GraphQLError,
-    GraphQLInvalidMessageError,
     GraphQLMultiError,
     GraphQLUnauthorizedError,
     IncompatibleApiError,
@@ -48,6 +49,12 @@ def _import_client_class(
     raise IncompatibleApiError(version=api_version, min_version=AwesomeVersion("4.20.0"))
 
 
+def _normalize_url(url_str: str) -> yarl.URL:
+    url_str = url_str if "://" in url_str else f"http://{url_str}"
+    url = yarl.URL(url_str)
+    return url.origin()
+
+
 async def get_api_client(host: str, api_key: str, session: ClientSession) -> UnraidApiClient:
     """Get Unraid API Client."""
     client = UnraidApiClient(host, api_key, session)
@@ -66,8 +73,8 @@ class UnraidApiClient:
     version: AwesomeVersion
 
     def __init__(self, host: str, api_key: str, session: ClientSession) -> None:
-        self.host = host.rstrip("/")
-        self.endpoint = self.host + "/graphql"
+        self.host = _normalize_url(host)
+        self.endpoint = self.host / "graphql"
         self.api_key = api_key
         self.session = session
 
@@ -82,7 +89,7 @@ class UnraidApiClient:
             json={"query": query, "variables": variables or {}},
             headers={
                 "x-api-key": self.api_key,
-                "Origin": self.host,
+                "Origin": str(self.host),
                 "content-type": "application/json",
             },
         )
@@ -108,7 +115,6 @@ class UnraidApiClient:
             return model.model_validate(result["data"])
         except ValidationError as exc:
             raise UnraidApiInvalidResponseError(response=response) from exc
-
 
     async def query_api_version(self) -> AwesomeVersion:
         try:
