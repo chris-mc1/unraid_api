@@ -21,7 +21,7 @@ from .exceptions import (
     UnraidApiError,
     UnraidApiInvalidResponseError,
 )
-from .models import CpuMetricsSubscription, MetricsArray
+from .models import CpuMetricsSubscription, MemorySubscription, MetricsArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,6 +42,7 @@ class UnraidServerData(TypedDict):  # noqa: D101
     ups_devices: dict[str, UpsDevice]
     cpu_metrics: CpuMetricsSubscription
     cpu_usage: float
+    memory: MemorySubscription
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -81,6 +82,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             await self.api_client.start_websocket()
 
             await self.api_client.subscribe_cpu_usage(self._cpu_usage_callback)
+            await self.api_client.subscribe_memory(self._memory_callback)
             if self.api_client.version >= AwesomeVersion("4.26.0"):
                 await self.api_client.subscribe_cpu_metrics(self._cpu_metrics_callback)
         except (
@@ -175,6 +177,14 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
         if not self.api_client.websocket_connected:
             self.data["cpu_usage"] = data.cpu_percent_total
+            self.data["memory"] = MemorySubscription(
+                free=data.memory_free,
+                total=data.memory_total,
+                active=data.memory_active,
+                available=data.memory_available,
+                percent_total=data.memory_percent_total,
+            )
+
         if (
             self.api_client.version >= AwesomeVersion("4.26.0")
             or not self.api_client.websocket_connected
@@ -241,6 +251,10 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
     def _cpu_usage_callback(self, data: float) -> None:
         self.data["cpu_usage"] = data
+        self.async_update_listeners()
+
+    def _memory_callback(self, data: MemorySubscription) -> None:
+        self.data["memory"] = data
         self.async_update_listeners()
 
     def _do_callback(

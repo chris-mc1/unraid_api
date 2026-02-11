@@ -20,6 +20,7 @@ class GraphqlResponses:
 
     cpu_percent_total: ClassVar[list[dict]]
     cpu_metrics: ClassVar[list[dict]]
+    memory: ClassVar[list[dict]]
 
     is_unauthenticated = False
     unauthenticated: ClassVar[dict] = {
@@ -94,6 +95,8 @@ class GraphqlResponses:
                 return self.cpu_percent_total[index]
             case "CpuMetrics":
                 return self.cpu_metrics[index]
+            case "Memory":
+                return self.memory[index]
 
 
 class GraphqlResponses420(GraphqlResponses):
@@ -206,6 +209,26 @@ class GraphqlResponses420(GraphqlResponses):
         self.cpu_percent_total = [
             {"systemMetricsCpu": {"percentTotal": 5.1}},
             {"systemMetricsCpu": {"percentTotal": 7.5}},
+        ]
+        self.memory = [
+            {
+                "systemMetricsMemory": {
+                    "free": 248168448,
+                    "total": 16644698112,
+                    "percentTotal": 70.72346589159935,
+                    "active": 11771707392,
+                    "available": 4872990720,
+                }
+            },
+            {
+                "systemMetricsMemory": {
+                    "free": 242290688,
+                    "total": 16644698112,
+                    "percentTotal": 71.88141588085776,
+                    "active": 11964444672,
+                    "available": 4680253440,
+                }
+            },
         ]
 
 

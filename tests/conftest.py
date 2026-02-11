@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from custom_components.unraid_api.models import (
         CpuMetricsSubscription,
         Disk,
+        MemorySubscription,
         MetricsArray,
         ServerInfo,
         Share,
@@ -200,6 +201,7 @@ class MockApiClient:
     websocket_connected = False
     cpu_usage_callback: Callable[[float], None]
     cpu_metrics_callback: Callable[[CpuMetricsSubscription]]
+    memory_callback: Callable[[MemorySubscription]]
 
     def __init__(self, state: type[ApiState]) -> None:
         self.state = state()
@@ -236,6 +238,9 @@ class MockApiClient:
         self, callback: Callable[[CpuMetricsSubscription], None]
     ) -> None:
         self.cpu_metrics_callback = callback
+
+    async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
+        self.memory_callback = callback
 
 
 @pytest.fixture

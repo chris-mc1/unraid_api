@@ -115,3 +115,14 @@ class CpuMetricsSubscription:
 
     power: float
     temp: float
+
+
+@dataclass
+class MemorySubscription:
+    """Memory subscription."""
+
+    free: int
+    total: int
+    active: int
+    available: int
+    percent_total: float

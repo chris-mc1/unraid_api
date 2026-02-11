@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from custom_components.unraid_api.models import (
         CpuMetricsSubscription,
         Disk,
+        MemorySubscription,
         MetricsArray,
         ServerInfo,
         Share,
@@ -296,6 +297,10 @@ class UnraidApiClient(UnraidApiClientBase):
     async def subscribe_cpu_metrics(
         self, callback: Callable[[CpuMetricsSubscription], None]
     ) -> None:
+        pass
+
+    @abstractmethod
+    async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
         pass
 
 

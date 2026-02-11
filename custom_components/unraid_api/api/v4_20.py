@@ -12,6 +12,7 @@ from custom_components.unraid_api.models import (
     Disk,
     DiskStatus,
     DiskType,
+    MemorySubscription,
     MetricsArray,
     ServerInfo,
     Share,
@@ -128,6 +129,23 @@ class UnraidApiV420(UnraidApiClient):
             query=CPU_USAGE_SUBSCRIPTION, operation_name="CpuUsage", callback=_callback
         )
 
+    async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
+        def _callback(data: Any) -> None:
+            model = SystemMetricsMemorySubscription.model_validate(data)
+            callback(
+                MemorySubscription(
+                    free=model.system_metrics_memory.free,
+                    total=model.system_metrics_memory.total,
+                    active=model.system_metrics_memory.active,
+                    available=model.system_metrics_memory.available,
+                    percent_total=model.system_metrics_memory.percent_total,
+                )
+            )
+
+        await self._subscribe(
+            query=MEMORY_SUBSCRIPTION, operation_name="Memory", callback=_callback
+        )
+
 
 ## Queries
 
@@ -231,6 +249,18 @@ CPU_USAGE_SUBSCRIPTION = """
 subscription CpuUsage {
   systemMetricsCpu {
     percentTotal
+  }
+}
+"""
+
+MEMORY_SUBSCRIPTION = """
+subscription Memory {
+  systemMetricsMemory {
+    free
+    total
+    percentTotal
+    active
+    available
   }
 }
 """
@@ -346,3 +376,8 @@ class SystemMetricsCpu(BaseModel):  # noqa: D101
 
 class SystemMetricsCpuSubscription(BaseModel):  # noqa: D101
     system_metrics_cpu: SystemMetricsCpu = Field(alias="systemMetricsCpu")
+
+
+### Memory
+class SystemMetricsMemorySubscription(BaseModel):  # noqa: D101
+    system_metrics_memory: MetricsMemory = Field(alias="systemMetricsMemory")

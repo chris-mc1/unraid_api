@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from awesomeversion import AwesomeVersion
-from custom_components.unraid_api.models import CpuMetricsSubscription
+from custom_components.unraid_api.models import CpuMetricsSubscription, MemorySubscription
 
 from . import setup_config_entry
 from .api_states import API_STATES, ApiState
@@ -283,6 +283,16 @@ async def test_main_sensors_subscriptions(
     assert await setup_config_entry(hass)
     api_client.cpu_usage_callback(7.5)
     api_client.cpu_metrics_callback(CpuMetricsSubscription(temp=31.0, power=2.8))
+    api_client.memory_callback(
+        MemorySubscription(
+            free=415510528,
+            total=16646950912,
+            active=12746354688,
+            available=3900596224,
+            percent_total=76.56870471583932,
+        )
+    )
+    await hass.async_block_till_done()
 
     # cpu_utilization
     state = hass.states.get("sensor.test_server_cpu_utilization")
@@ -309,3 +319,41 @@ async def test_main_sensors_subscriptions(
 
     state = hass.states.get("sensor.test_server_cpu_power")
     assert state.state == "3.5"
+
+    # RAM
+    state = hass.states.get("sensor.test_server_ram_usage")
+    assert state.state == "76.5687047158393"
+    assert state.attributes["used"] == 12746354688
+    assert state.attributes["free"] == 415510528
+    assert state.attributes["total"] == 16646950912
+    assert state.attributes["available"] == 3900596224
+
+    state = hass.states.get("sensor.test_server_ram_used")
+    assert state.state == "12.746354688"
+
+    state = hass.states.get("sensor.test_server_ram_free")
+    assert state.state == "0.415510528"
+
+    api_client.memory_callback(
+        MemorySubscription(
+            free=248168448,
+            total=16644698112,
+            active=11771707392,
+            available=4872990720,
+            percent_total=70.72346589159935,
+        )
+    )
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.test_server_ram_usage")
+    assert state.state == "70.7234658915993"
+    assert state.attributes["used"] == 11771707392
+    assert state.attributes["free"] == 248168448
+    assert state.attributes["total"] == 16644698112
+    assert state.attributes["available"] == 4872990720
+
+    state = hass.states.get("sensor.test_server_ram_used")
+    assert state.state == "11.771707392"
+
+    state = hass.states.get("sensor.test_server_ram_free")
+    assert state.state == "0.248168448"
