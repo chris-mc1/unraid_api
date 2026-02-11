@@ -185,10 +185,14 @@ class UnraidApiClientBase:
 
     async def stop_websocket(self) -> None:
         self._ws_connected = False
-        await self._ws.close()
-        self._ws_recv_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await self._ws_recv_task
+        if self._ws:
+            await self._ws.close()
+            self._ws = None
+        if self._ws_recv_task:
+            self._ws_recv_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._ws_recv_task
+            self._ws_recv_task = None
 
     @property
     def websocket_connected(self) -> bool:
