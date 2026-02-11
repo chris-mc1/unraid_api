@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
@@ -16,6 +18,9 @@ from custom_components.unraid_api.models import (
 )
 
 from . import UnraidApiClient
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class UnraidApiV420(UnraidApiClient):
@@ -114,6 +119,15 @@ class UnraidApiV420(UnraidApiClient):
         )
         return disks
 
+    async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
+        def _callback(data: Any) -> None:
+            model = SystemMetricsCpuSubscription.model_validate(data)
+            callback(model.system_metrics_cpu.percent_total)
+
+        await self._subscribe(
+            query=CPU_USAGE_SUBSCRIPTION, operation_name="CpuUsage", callback=_callback
+        )
+
 
 ## Queries
 
@@ -210,6 +224,17 @@ query Disks {
   }
 }
 """
+
+
+## Subscription
+CPU_USAGE_SUBSCRIPTION = """
+subscription CpuUsage {
+  systemMetricsCpu {
+    percentTotal
+  }
+}
+"""
+
 ## Api Models
 
 
@@ -312,3 +337,12 @@ class FSDisk(ParityDisk):  # noqa: D101
     fs_size: int | None = Field(alias="fsSize")
     fs_free: int | None = Field(alias="fsFree")
     fs_used: int | None = Field(alias="fsUsed")
+
+
+### CpuMetrics
+class SystemMetricsCpu(BaseModel):  # noqa: D101
+    percent_total: float = Field(alias="percentTotal")
+
+
+class SystemMetricsCpuSubscription(BaseModel):  # noqa: D101
+    system_metrics_cpu: SystemMetricsCpu = Field(alias="systemMetricsCpu")

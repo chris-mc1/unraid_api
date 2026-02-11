@@ -18,6 +18,9 @@ class GraphqlResponses:
     disks: ClassVar[dict]
     ups: ClassVar[dict]
 
+    cpu_percent_total: ClassVar[list[dict]]
+    cpu_metrics: ClassVar[list[dict]]
+
     is_unauthenticated = False
     unauthenticated: ClassVar[dict] = {
         "errors": [
@@ -84,6 +87,13 @@ class GraphqlResponses:
                     return self.not_found
         except ArithmeticError:
             return self.error
+
+    def get_subscription(self, query: str, index: int = 0) -> dict:
+        match query:
+            case "CpuUsage":
+                return self.cpu_percent_total[index]
+            case "CpuMetrics":
+                return self.cpu_metrics[index]
 
 
 class GraphqlResponses420(GraphqlResponses):
@@ -191,15 +201,12 @@ class GraphqlResponses420(GraphqlResponses):
                 }
             }
         }
-        self.not_found = {
-            "errors": [
-                {
-                    "message": "Cannot query field",
-                    "locations": [{"line": 3, "column": 5}],
-                    "extensions": {"code": "GRAPHQL_VALIDATION_FAILED"},
-                }
-            ]
-        }
+
+        ## Subscription
+        self.cpu_percent_total = [
+            {"systemMetricsCpu": {"percentTotal": 5.1}},
+            {"systemMetricsCpu": {"percentTotal": 7.5}},
+        ]
 
 
 class GraphqlResponses426(GraphqlResponses420):
@@ -209,6 +216,8 @@ class GraphqlResponses426(GraphqlResponses420):
 
     def __init__(self) -> None:
         super().__init__()
+
+        ## Queries
         self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.26.0"}}}}}
         self.metrics_array = {
             "data": {
@@ -253,6 +262,12 @@ class GraphqlResponses426(GraphqlResponses420):
                 ]
             }
         }
+
+        ## Subscription
+        self.cpu_metrics = [
+            {"systemMetricsCpuTelemetry": {"temp": [31], "power": [2.8]}},
+            {"systemMetricsCpuTelemetry": {"temp": [35], "power": [3.5]}},
+        ]
 
 
 class GraphqlResponses410(GraphqlResponses420):

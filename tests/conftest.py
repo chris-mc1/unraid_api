@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import asyncio
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient, TestServer
+from custom_components.unraid_api.api import GRAPHQL_WS_PROTOCOL, GraphQLWebsocketMessageType
 
 from .api_states import API_STATE_LATEST, ApiState
 
 if TYPE_CHECKING:
     from collections.abc import (
         AsyncGenerator,
-        AsyncIterator,
         Awaitable,
         Callable,
         Generator,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 
     from awesomeversion import AwesomeVersion
     from custom_components.unraid_api.models import (
+        CpuMetricsSubscription,
         Disk,
         MetricsArray,
         ServerInfo,
@@ -41,15 +43,41 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:  
     return
 
 
+class AsyncEventMock(AsyncMock):
+    """
+    AsyncMock with internal Event.
+
+    The Event is set and cleared evertime the mock is called.
+    """
+
+    def __init__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
+        super().__init__(*args, **kwargs)
+        self._call_event = asyncio.Event()
+        self.wait = self._call_event.wait
+
+    def __call__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
+        return_value = super().__call__(*args, **kwargs)
+        self._call_event.set()
+        self._call_event.clear()
+        return return_value
+
+
 class GraphqlServerMocker:
     """Mock GraphQL client requests."""
+
+    ws: web.WebSocketResponse | None = None
 
     def __init__(self, response_set: type[GraphqlResponses]) -> None:
         self.responses = response_set()
         self.app = web.Application()
-        self.app.add_routes([web.post("/graphql", self.handler)])
+        self.app.add_routes(
+            [web.post("/graphql", self.handler), web.get("/graphql", self.websocket_handler)]
+        )
         self.server = TestServer(self.app, skip_url_asserts=True)
         self.clients = set[ClientSession]()
+
+        self._ws_msg = list[str]()
+        self._ws_subscriptions = dict[str, str]()
 
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -57,6 +85,47 @@ class GraphqlServerMocker:
         query = query.split(" ")[1]
         response = self.responses.get_response(query)
         return web.json_response(data=response)
+
+    async def websocket_handler(self, request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse(
+            heartbeat=2,
+            protocols=(GRAPHQL_WS_PROTOCOL,),
+        )
+        await ws.prepare(request)
+        self.ws = ws
+        while not ws.closed:
+            async for msg in ws:
+                if msg.type != web.WSMsgType.TEXT:
+                    continue
+                message = msg.json()
+                self._ws_msg.append(message)
+                if message["type"] == GraphQLWebsocketMessageType.CONNECTION_INIT:
+                    await ws.send_json({"type": GraphQLWebsocketMessageType.CONNECTION_ACK.value})
+                elif message["type"] == GraphQLWebsocketMessageType.SUBSCRIBE:
+                    query: str = message["payload"]["query"]
+                    query = query.split(" ")[1]
+                    self._ws_subscriptions[query] = message["id"]
+                    response = self.responses.get_subscription(query)
+                    await self.ws.send_json(
+                        {
+                            "id": message["id"],
+                            "type": GraphQLWebsocketMessageType.NEXT.value,
+                            "payload": {"data": response},
+                        }
+                    )
+        self.ws = None
+        return ws
+
+    async def send_subscription(self, index: int = 0) -> None:
+        for query, op_id in self._ws_subscriptions.items():
+            response = self.responses.get_subscription(query, index)
+            await self.ws.send_json(
+                {
+                    "id": op_id,
+                    "type": GraphQLWebsocketMessageType.NEXT.value,
+                    "payload": {"data": response},
+                }
+            )
 
     def create_session(self) -> TestClient:
         """Create a ClientSession that is bound to this mocker."""
@@ -68,6 +137,8 @@ class GraphqlServerMocker:
         await self.server.start_server()
 
     async def close(self) -> None:
+        if self.ws:
+            await self.ws.send_json({"type": GraphQLWebsocketMessageType.COMPLETE.value})
         while self.clients:
             await self.clients.pop().close()
         await self.server.close()
@@ -126,6 +197,9 @@ class MockApiClient:
     """Mock GraphQL API Client."""
 
     state: ApiState
+    websocket_connected = False
+    cpu_usage_callback: Callable[[float], None]
+    cpu_metrics_callback: Callable[[CpuMetricsSubscription]]
 
     def __init__(self, state: type[ApiState]) -> None:
         self.state = state()
@@ -133,6 +207,12 @@ class MockApiClient:
     @property
     def version(self) -> AwesomeVersion:
         return self.state.version
+
+    async def start_websocket(self) -> None:
+        pass
+
+    async def stop_websocket(self) -> None:
+        pass
 
     async def query_server_info(self) -> ServerInfo:
         return self.state.server_info
@@ -149,8 +229,13 @@ class MockApiClient:
     async def query_ups(self) -> list[UpsDevice]:
         return self.state.ups
 
-    async def subscribe_cpu_total(self) -> AsyncIterator[float]:
-        pass
+    async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
+        self.cpu_usage_callback = callback
+
+    async def subscribe_cpu_metrics(
+        self, callback: Callable[[CpuMetricsSubscription], None]
+    ) -> None:
+        self.cpu_metrics_callback = callback
 
 
 @pytest.fixture
