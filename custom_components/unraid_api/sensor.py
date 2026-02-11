@@ -175,14 +175,14 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].cpu_percent_total,
+        value_fn=lambda coordinator: coordinator.data["cpu_usage"],
     ),
     UnraidSensorEntityDescription(
         key="cpu_temp",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].cpu_temp,
+        value_fn=lambda coordinator: coordinator.data["cpu_metrics"].temp,
         min_version=AwesomeVersion("4.26.0"),
     ),
     UnraidSensorEntityDescription(
@@ -190,7 +190,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].cpu_power,
+        value_fn=lambda coordinator: coordinator.data["cpu_metrics"].power,
         min_version=AwesomeVersion("4.26.0"),
     ),
 )

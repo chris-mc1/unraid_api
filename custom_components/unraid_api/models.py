@@ -107,3 +107,11 @@ class UpsDevice:
     load_percentage: float
     output_voltage: float
     input_voltage: float
+
+
+@dataclass
+class CpuMetricsSubscription:
+    """Cpu metrics subscription."""
+
+    power: float
+    temp: float

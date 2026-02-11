@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from awesomeversion import AwesomeVersion
+from custom_components.unraid_api.models import CpuMetricsSubscription
 
 from . import setup_config_entry
 from .api_states import API_STATES, ApiState
@@ -208,7 +209,7 @@ async def test_ups_sensors(
     hass: HomeAssistant,
     mock_api_client: MagicMock,
 ) -> None:
-    """Test main sensor entities."""
+    """Test ups sensor entities."""
     api_client: MockApiClient = mock_api_client.return_value
     api_client.state = api_state()
     assert await setup_config_entry(hass)
@@ -269,3 +270,42 @@ async def test_ups_sensors(
         # ups_output_voltage
         state = hass.states.get("sensor.back_ups_es_650g2_output_voltage")
         assert state is None
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_main_sensors_subscriptions(
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test subscription sensor entities."""
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.websocket_connected = True
+    assert await setup_config_entry(hass)
+    api_client.cpu_usage_callback(7.5)
+    api_client.cpu_metrics_callback(CpuMetricsSubscription(temp=31.0, power=2.8))
+
+    # cpu_utilization
+    state = hass.states.get("sensor.test_server_cpu_utilization")
+    assert state.state == "7.5"
+
+    api_client.cpu_usage_callback(5.1)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.test_server_cpu_utilization")
+    assert state.state == "5.1"
+
+    # cpu_temp, cpu_power
+    state = hass.states.get("sensor.test_server_cpu_temperature")
+    assert state.state == "31.0"
+
+    state = hass.states.get("sensor.test_server_cpu_power")
+    assert state.state == "2.8"
+
+    api_client.cpu_metrics_callback(CpuMetricsSubscription(temp=35.0, power=3.5))
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.test_server_cpu_temperature")
+    assert state.state == "35.0"
+
+    state = hass.states.get("sensor.test_server_cpu_power")
+    assert state.state == "3.5"
