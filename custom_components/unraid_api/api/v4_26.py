@@ -170,7 +170,6 @@ class UpsQuery(BaseModel):  # noqa: D101
 
 class UpsDevices(BaseModel):  # noqa: D101
     id: str
-    id: str
     name: str
     model: str
     status: str
