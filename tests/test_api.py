@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
 from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, get_api_client
 from custom_components.unraid_api.api import _normalize_url as normalize_url
-from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType
+from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
 
 from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
 
@@ -100,6 +101,15 @@ async def test_metrics_array(
     assert metrics_array.capacity_free == 523094720
     assert metrics_array.capacity_used == 11474981430
     assert metrics_array.capacity_total == 11998076150
+
+    assert metrics_array.parity_check_status == ParityCheckStatus.COMPLETED
+    assert metrics_array.parity_check_date == datetime(
+        year=2025, month=9, day=27, hour=22, minute=0, second=1, tzinfo=UTC
+    )
+    assert metrics_array.parity_check_duration == 5982
+    assert metrics_array.parity_check_speed == 10
+    assert metrics_array.parity_check_errors is None
+    assert metrics_array.parity_check_progress == 0
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)

@@ -133,6 +133,14 @@ class GraphqlResponses420(GraphqlResponses):
                             "total": "11998076150",
                         }
                     },
+                    "parityCheckStatus": {
+                        "date": "2025-09-27T22:00:01.000Z",
+                        "duration": 5982,
+                        "speed": "10",
+                        "status": "COMPLETED",
+                        "errors": None,
+                        "progress": 0,
+                    },
                 },
             }
         }
@@ -263,6 +271,14 @@ class GraphqlResponses426(GraphqlResponses420):
                             "used": "11474981430",
                             "total": "11998076150",
                         }
+                    },
+                    "parityCheckStatus": {
+                        "date": "2025-09-27T22:00:01.000Z",
+                        "duration": 5982,
+                        "speed": "10",
+                        "status": "COMPLETED",
+                        "errors": None,
+                        "progress": 0,
                     },
                 },
             }

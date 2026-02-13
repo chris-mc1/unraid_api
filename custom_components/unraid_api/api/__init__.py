@@ -121,7 +121,7 @@ class UnraidApiClientBase:
     async def call_api[T: BaseModel](
         self,
         query: str,
-        model: type[T],
+        model: type[T] | None,
         variables: dict[str, Any] | None = None,
     ) -> T:
         response = await self.session.post(
@@ -152,9 +152,11 @@ class UnraidApiClientBase:
                 raise GraphQLMultiError(result["errors"])
             raise GraphQLError(result["errors"][0])
         try:
-            return model.model_validate(result["data"])
+            if model is not None:
+                return model.model_validate(result["data"])
         except ValidationError as exc:
             raise UnraidApiInvalidResponseError(response=response) from exc
+        return None
 
     async def start_websocket(self) -> None:
         if self._ws:
@@ -301,6 +303,22 @@ class UnraidApiClient(UnraidApiClientBase):
 
     @abstractmethod
     async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
+        pass
+
+    @abstractmethod
+    async def start_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def cancel_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def pause_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def resume_parity_check(self) -> None:
         pass
 
 

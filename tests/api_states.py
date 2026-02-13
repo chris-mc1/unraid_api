@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from awesomeversion import AwesomeVersion
@@ -11,6 +12,7 @@ from custom_components.unraid_api.models import (
     DiskStatus,
     DiskType,
     MetricsArray,
+    ParityCheckStatus,
     ServerInfo,
     Share,
     UpsDevice,
@@ -48,6 +50,20 @@ class ApiState420(ApiState):
             capacity_free=523094720,
             capacity_used=11474981430,
             capacity_total=11998076150,
+            parity_check_status=ParityCheckStatus.COMPLETED,
+            parity_check_date=datetime(
+                year=2025,
+                month=9,
+                day=27,
+                hour=22,
+                minute=0,
+                second=1,
+                tzinfo=UTC,
+            ),
+            parity_check_duration=5982,
+            parity_check_speed=10.0,
+            parity_check_errors=None,
+            parity_check_progress=0,
         )
         self.shares = [
             Share(

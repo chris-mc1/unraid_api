@@ -357,3 +357,40 @@ async def test_main_sensors_subscriptions(
 
     state = hass.states.get("sensor.test_server_ram_free")
     assert state.state == "0.248168448"
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_state"), API_STATES)
+async def test_parity_check_sensors(
+    api_state: ApiState,
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test parity check sensor entities."""
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
+
+    # parity_check_status
+    state = hass.states.get("sensor.test_server_parity_check")
+    assert state.state == "completed"
+
+    # parity_check_date
+    state = hass.states.get("sensor.test_server_parity_check_date")
+    assert state.state == "2025-09-27T22:00:01+00:00"
+
+    # parity_check_duration
+    state = hass.states.get("sensor.test_server_parity_check_duration")
+    assert state.state == "1.66166666666667"
+
+    # parity_check_speed
+    state = hass.states.get("sensor.test_server_parity_check_speed")
+    assert state.state == "10.0"
+
+    # parity_check_errors
+    state = hass.states.get("sensor.test_server_parity_check_errors")
+    assert state.state == "unknown"
+
+    # parity_check_progress
+    state = hass.states.get("sensor.test_server_parity_check_progress")
+    assert state.state == "0"

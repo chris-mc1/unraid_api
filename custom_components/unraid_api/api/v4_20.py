@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -14,6 +15,7 @@ from custom_components.unraid_api.models import (
     DiskType,
     MemorySubscription,
     MetricsArray,
+    ParityCheckStatus,
     ServerInfo,
     Share,
 )
@@ -54,6 +56,12 @@ class UnraidApiV420(UnraidApiClient):
             capacity_free=response.array.capacity.kilobytes.free,
             capacity_used=response.array.capacity.kilobytes.used,
             capacity_total=response.array.capacity.kilobytes.total,
+            parity_check_status=response.array.parity_check.status,
+            parity_check_date=response.array.parity_check.date,
+            parity_check_duration=response.array.parity_check.duration,
+            parity_check_speed=response.array.parity_check.speed,
+            parity_check_errors=response.array.parity_check.errors,
+            parity_check_progress=response.array.parity_check.progress,
         )
 
     async def query_shares(self) -> list[Share]:
@@ -145,6 +153,18 @@ class UnraidApiV420(UnraidApiClient):
         await self._subscribe(
             query=MEMORY_SUBSCRIPTION, operation_name="Memory", callback=_callback
         )
+
+    async def start_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_START, None)
+
+    async def cancel_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_CANCEL, None)
+
+    async def pause_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_PAUSE, None)
+
+    async def resume_parity_check(self) -> None:
+        await self.call_api(PARITY_CHECK_RESUME, None)
 
 
 ## Queries
@@ -240,6 +260,14 @@ query Disks {
       isSpinning
     }
   }
+    parityCheckStatus {
+      date
+      duration
+      speed
+      status
+      errors
+      progress
+    }
 }
 """
 
@@ -261,6 +289,39 @@ subscription Memory {
     percentTotal
     active
     available
+  }
+}
+
+"""
+
+PARITY_CHECK_START = """
+mutation ParityCheck {
+  parityCheck {
+    start(correct: true)
+  }
+}
+"""
+
+PARITY_CHECK_CANCEL = """
+mutation ParityCheck {
+  parityCheck {
+    cancel
+  }
+}
+"""
+
+PARITY_CHECK_PAUSE = """
+mutation ParityCheck {
+  parityCheck {
+    pause
+  }
+}
+"""
+
+PARITY_CHECK_RESUME = """
+mutation ParityCheck {
+  parityCheck {
+    resume
   }
 }
 """
@@ -317,6 +378,7 @@ class MetricsCpu(BaseModel):  # noqa: D101
 class _Array(BaseModel):
     state: ArrayState
     capacity: ArrayCapacity
+    parity_check: ParityCheck = Field(alias="parityCheckStatus")
 
 
 class ArrayCapacity(BaseModel):  # noqa: D101
@@ -327,6 +389,15 @@ class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
     free: int
     used: int
     total: int
+
+
+class ParityCheck(BaseModel):  # noqa: D101
+    date: datetime
+    duration: int
+    speed: float
+    status: ParityCheckStatus
+    errors: int | None
+    progress: int
 
 
 ### Shares
