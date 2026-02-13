@@ -11,10 +11,17 @@ from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pydantic_core import ValidationError
 
-from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .exceptions import (
+    GraphQLError,
+    GraphQLMultiError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+    UnraidApiError,
+    UnraidApiInvalidResponseError,
+)
+from .models import CpuMetricsSubscription, MemorySubscription, MetricsArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,17 +30,19 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
-    from .models import Array, Disk, Metrics, Share, UpsDevice
+    from .models import Disk, MetricsArray, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UnraidServerData(TypedDict):  # noqa: D101
-    metrics: Metrics | None
-    array: Array | None
+    metrics_array: MetricsArray
     disks: dict[str, Disk]
     shares: dict[str, Share]
     ups_devices: dict[str, UpsDevice]
+    cpu_metrics: CpuMetricsSubscription
+    cpu_usage: float
+    memory: MemorySubscription
 
 
 class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
@@ -43,6 +52,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
     known_shares: set[str]
     known_ups_devices: set[str]
     config_entry: UnraidConfigEntry
+    _websocket_error_logged: bool = True
 
     def __init__(
         self, hass: HomeAssistant, config_entry: UnraidConfigEntry, api_client: UnraidApiClient
@@ -63,19 +73,49 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
         self.known_ups_devices: set[str] = set()
+        self.data = UnraidServerData()
+
+        await self._connect_websocket()
+
+    async def _connect_websocket(self) -> None:
+        try:
+            await self.api_client.start_websocket()
+
+            await self.api_client.subscribe_cpu_usage(self._cpu_usage_callback)
+            await self.api_client.subscribe_memory(self._memory_callback)
+            if self.api_client.version >= AwesomeVersion("4.26.0"):
+                await self.api_client.subscribe_cpu_metrics(self._cpu_metrics_callback)
+        except (
+            ClientConnectionError,
+            TimeoutError,
+        ):
+            if self._websocket_error_logged:
+                self.logger.debug("Websocket: Connection failed", exc_info=True)
+            else:
+                self._websocket_error_logged = True
+                self.logger.exception("Websocket: Connection failed")
+        except (GraphQLError, GraphQLMultiError) as exc:
+            if self._websocket_error_logged:
+                self.logger.debug("Websocket: GraphQL Error response: %s", str(exc))
+            else:
+                self._websocket_error_logged = True
+                self.logger.error("Websocket: GraphQL Error response: %s", str(exc))  # noqa: TRY400
+        else:
+            self.logger.info("Websocket: Connected")
+            self._websocket_error_logged = False
 
     async def _async_update_data(self) -> UnraidServerData:
-        data = UnraidServerData()
+        if self._websocket_error_logged and not self.api_client.websocket_connected:
+            await self._connect_websocket()
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(self._update_metrics(data))
-                tg.create_task(self._update_array(data))
+                tg.create_task(self._update_metrics())
                 if self.config_entry.options[CONF_DRIVES]:
-                    tg.create_task(self._update_disks(data))
+                    tg.create_task(self._update_disks())
                 if self.config_entry.options[CONF_SHARES]:
-                    tg.create_task(self._update_shares(data))
+                    tg.create_task(self._update_shares())
                 if self.api_client.version >= AwesomeVersion("4.26.0"):
-                    tg.create_task(self._update_ups(data))
+                    tg.create_task(self._update_ups())
 
         except* ClientConnectorSSLError as exc:
             _LOGGER.debug("Update: SSL error: %s", str(exc))
@@ -94,21 +134,21 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 translation_key="cannot_connect",
                 translation_placeholders={"error": str(exc)},
             ) from exc
-        except* UnraidAuthError as exc:
+        except* GraphQLUnauthorizedError as exc:
             _LOGGER.debug("Update: Auth failed")
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="auth_failed",
-                translation_placeholders={"error_msg": exc.args[0]},
+                translation_placeholders={"error_msg": (exc)},
             ) from exc
-        except* UnraidGraphQLError as exc:
-            _LOGGER.debug("Update: GraphQL Error response: %s", exc.exceptions[0].response)
+        except* (GraphQLError, GraphQLMultiError) as exc:
+            _LOGGER.debug("Update: GraphQL Error response: %s", str(exc))
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="error_response",
-                translation_placeholders={"error_msg": exc.exceptions[0].args[0]},
+                translation_placeholders={"error_msg": str(exc)},
             ) from exc
-        except* ValidationError as exc:
+        except* UnraidApiInvalidResponseError as exc:
             _LOGGER.debug("Update: invalid data")
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -129,15 +169,31 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 },
             ) from exc
 
-        return data
+        return self.data
 
-    async def _update_metrics(self, data: UnraidServerData) -> None:
-        data["metrics"] = await self.api_client.query_metrics()
+    async def _update_metrics(self) -> None:
+        data = await self.api_client.query_metrics_array()
+        self.data["metrics_array"] = data
 
-    async def _update_array(self, data: UnraidServerData) -> None:
-        data["array"] = await self.api_client.query_array()
+        if not self.api_client.websocket_connected:
+            self.data["cpu_usage"] = data.cpu_percent_total
+            self.data["memory"] = MemorySubscription(
+                free=data.memory_free,
+                total=data.memory_total,
+                active=data.memory_active,
+                available=data.memory_available,
+                percent_total=data.memory_percent_total,
+            )
 
-    async def _update_disks(self, data: UnraidServerData) -> None:
+        if (
+            self.api_client.version >= AwesomeVersion("4.26.0")
+            or not self.api_client.websocket_connected
+        ):
+            self.data["cpu_metrics"] = CpuMetricsSubscription(
+                power=data.cpu_power, temp=data.cpu_temp
+            )
+
+    async def _update_disks(self) -> None:
         disks = {}
         query_response = await self.api_client.query_disks()
 
@@ -146,9 +202,9 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             if disk.id not in self.known_disks:
                 self.known_disks.add(disk.id)
                 self._do_callback(self.disk_callbacks, disk)
-        data["disks"] = disks
+        self.data["disks"] = disks
 
-    async def _update_shares(self, data: UnraidServerData) -> None:
+    async def _update_shares(self) -> None:
         shares = {}
         query_response = await self.api_client.query_shares()
 
@@ -157,9 +213,9 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             if share.name not in self.known_shares:
                 self.known_shares.add(share.name)
                 self._do_callback(self.share_callbacks, share)
-        data["shares"] = shares
+        self.data["shares"] = shares
 
-    async def _update_ups(self, data: UnraidServerData) -> None:
+    async def _update_ups(self) -> None:
         devices = {}
         try:
             query_response = await self.api_client.query_ups()
@@ -169,10 +225,10 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 if device.id not in self.known_ups_devices:
                     self.known_ups_devices.add(device.id)
                     self._do_callback(self.ups_callbacks, device)
-        except UnraidGraphQLError:
+        except UnraidApiError:
             pass
 
-        data["ups_devices"] = devices
+        self.data["ups_devices"] = devices
 
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
@@ -188,6 +244,18 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.ups_callbacks.add(callback)
         for ups_id in self.known_ups_devices:
             self._do_callback([callback], self.data["ups_devices"][ups_id])
+
+    def _cpu_metrics_callback(self, data: CpuMetricsSubscription) -> None:
+        self.data["cpu_metrics"] = data
+        self.async_update_listeners()
+
+    def _cpu_usage_callback(self, data: float) -> None:
+        self.data["cpu_usage"] = data
+        self.async_update_listeners()
+
+    def _memory_callback(self, data: MemorySubscription) -> None:
+        self.data["memory"] = data
+        self.async_update_listeners()
 
     def _do_callback(
         self, callbacks: set[Callable[..., None]], *args: tuple[Any], **kwargs: dict[Any]

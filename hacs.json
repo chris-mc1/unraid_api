@@ -1,5 +1,5 @@
 {
     "name": "Unraid API",
     "render_readme": true,
-    "homeassistant": "2025.8"
+    "homeassistant": "2025.12.4"
 }

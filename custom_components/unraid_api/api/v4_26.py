@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
-from custom_components.unraid_api.models import Metrics, UpsDevice
+from custom_components.unraid_api.models import CpuMetricsSubscription, MetricsArray, UpsDevice
 
-from .v4_20 import UnraidApiV420, _Metrics
+from .v4_20 import UnraidApiV420, _Array, _Metrics
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class UnraidApiV426(UnraidApiV420):
@@ -19,9 +24,9 @@ class UnraidApiV426(UnraidApiV420):
 
     version = AwesomeVersion("4.26.0")
 
-    async def query_metrics(self) -> Metrics:
-        response = await self.call_api(METRICS_QUERY, MetricsQuery)
-        return Metrics(
+    async def query_metrics(self) -> MetricsArray:
+        response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
+        return MetricsArray(
             memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
@@ -50,10 +55,26 @@ class UnraidApiV426(UnraidApiV420):
             for device in response.ups_devices
         ]
 
+    async def subscribe_cpu_metrics(
+        self, callback: Callable[[CpuMetricsSubscription], None]
+    ) -> None:
+        def _callback(data: Any) -> None:
+            model = SystemMetricsCpuTelemetrySubscription.model_validate(data)
+            callback(
+                CpuMetricsSubscription(
+                    power=model.system_metrics_cpu_telemetry.power[0],
+                    temp=model.system_metrics_cpu_telemetry.temp[0],
+                )
+            )
+
+        await self._subscribe(
+            query=CPU_METRICS_SUBSCRIPTION, operation_name="CpuMetrics", callback=_callback
+        )
+
 
 ## Queries
 
-METRICS_QUERY = """
+METRICS_ARRAY_QUERY = """
 query Metrics {
   metrics {
     memory {
@@ -65,6 +86,16 @@ query Metrics {
     }
     cpu {
       percentTotal
+    }
+  }
+  array {
+    state
+    capacity {
+      kilobytes {
+        free
+        used
+        total
+      }
     }
   }
   info {
@@ -99,12 +130,23 @@ query UpsDevices {
 }
 """
 
+## Subscription
+CPU_METRICS_SUBSCRIPTION = """
+subscription CpuMetrics {
+  systemMetricsCpuTelemetry {
+    temp
+    power
+  }
+}
+"""
+
 ## Api Models
 
 
-### Metrics
-class MetricsQuery(BaseModel):  # noqa: D101
+### Metrics and Array
+class MetricsArrayQuery(BaseModel):  # noqa: D101
     metrics: _Metrics
+    array: _Array
     info: Info
 
 
@@ -128,7 +170,6 @@ class UpsQuery(BaseModel):  # noqa: D101
 
 class UpsDevices(BaseModel):  # noqa: D101
     id: str
-    id: str
     name: str
     model: str
     status: str
@@ -146,3 +187,15 @@ class UPSPower(BaseModel):  # noqa: D101
     input_voltage: float = Field(alias="inputVoltage")
     load_percentage: float = Field(alias="loadPercentage")
     output_voltage: float = Field(alias="outputVoltage")
+
+
+### CpuMetricsTelemetry
+class SystemMetricsCpuTelemetry(BaseModel):  # noqa: D101
+    power: list[float]
+    temp: list[float]
+
+
+class SystemMetricsCpuTelemetrySubscription(BaseModel):  # noqa: D101
+    system_metrics_cpu_telemetry: SystemMetricsCpuTelemetry = Field(
+        alias="systemMetricsCpuTelemetry"
+    )
