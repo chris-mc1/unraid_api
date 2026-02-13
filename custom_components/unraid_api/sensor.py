@@ -146,9 +146,8 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         value_fn=lambda coordinator: coordinator.data["memory"].percent_total,
         extra_values_fn=lambda coordinator: {
             "used": coordinator.data["memory"].active,
-            "free": coordinator.data["memory"].free,
+            "free": coordinator.data["memory"].available,
             "total": coordinator.data["memory"].total,
-            "available": coordinator.data["memory"].available,
         },
     ),
     UnraidSensorEntityDescription(
@@ -168,7 +167,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["memory"].free,
+        value_fn=lambda coordinator: coordinator.data["memory"].available,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
