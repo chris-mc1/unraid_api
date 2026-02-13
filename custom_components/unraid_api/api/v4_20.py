@@ -208,6 +208,14 @@ query MetricsArray {
         total
       }
     }
+    parityCheckStatus {
+      date
+      duration
+      speed
+      status
+      errors
+      progress
+    }
   }
 }
 """
@@ -260,14 +268,6 @@ query Disks {
       isSpinning
     }
   }
-    parityCheckStatus {
-      date
-      duration
-      speed
-      status
-      errors
-      progress
-    }
 }
 """
 

@@ -24,7 +24,7 @@ class UnraidApiV426(UnraidApiV420):
 
     version = AwesomeVersion("4.26.0")
 
-    async def query_metrics(self) -> MetricsArray:
+    async def query_metrics_array(self) -> MetricsArray:
         response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
         return MetricsArray(
             memory_free=response.metrics.memory.free,
@@ -35,6 +35,16 @@ class UnraidApiV426(UnraidApiV420):
             cpu_percent_total=response.metrics.cpu.percent_total,
             cpu_temp=response.info.cpu.packages.temp[0],
             cpu_power=response.info.cpu.packages.power[0],
+            state=response.array.state,
+            capacity_free=response.array.capacity.kilobytes.free,
+            capacity_used=response.array.capacity.kilobytes.used,
+            capacity_total=response.array.capacity.kilobytes.total,
+            parity_check_status=response.array.parity_check.status,
+            parity_check_date=response.array.parity_check.date,
+            parity_check_duration=response.array.parity_check.duration,
+            parity_check_speed=response.array.parity_check.speed,
+            parity_check_errors=response.array.parity_check.errors,
+            parity_check_progress=response.array.parity_check.progress,
         )
 
     async def query_ups(self) -> list[UpsDevice]:
@@ -75,7 +85,7 @@ class UnraidApiV426(UnraidApiV420):
 ## Queries
 
 METRICS_ARRAY_QUERY = """
-query Metrics {
+query MetricsArray {
   metrics {
     memory {
       free
@@ -96,6 +106,14 @@ query Metrics {
         used
         total
       }
+    }
+    parityCheckStatus {
+      date
+      duration
+      speed
+      status
+      errors
+      progress
     }
   }
   info {
