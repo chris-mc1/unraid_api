@@ -82,6 +82,8 @@ def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> Sta
     """Calculate the array usage percentage."""
     used = coordinator.data["metrics_array"].capacity_used
     total = coordinator.data["metrics_array"].capacity_total
+    if used is None or total is None or total == 0:
+        return None
     return (used / total) * 100
 
 
