@@ -42,26 +42,32 @@ BUTTON_DESCRIPTIONS = [
     UnraidButtonEntityDescription(
         key="parity_check_start",
         call=lambda coordinator: coordinator.api_client.start_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        not in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status
+            not in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING)
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_cancel",
         call=lambda coordinator: coordinator.api_client.cancel_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status
+            in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING)
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_pause",
         call=lambda coordinator: coordinator.api_client.pause_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        == ParityCheckStatus.RUNNING,
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status == ParityCheckStatus.RUNNING
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_resume",
         call=lambda coordinator: coordinator.api_client.resume_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        == ParityCheckStatus.PAUSED,
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status == ParityCheckStatus.PAUSED
+        ),
     ),
 ]
 
