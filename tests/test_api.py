@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, get_api_client
 from custom_components.unraid_api.api import _normalize_url as normalize_url
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
@@ -110,6 +111,13 @@ async def test_metrics_array(
     assert metrics_array.parity_check_speed == 10
     assert metrics_array.parity_check_errors is None
     assert metrics_array.parity_check_progress == 0
+
+    if api_responses.version >= AwesomeVersion("4.26.0"):
+        assert metrics_array.cpu_power == 2.8
+        assert metrics_array.cpu_temp == 31
+    else:
+        assert metrics_array.cpu_power is None
+        assert metrics_array.cpu_temp is None
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
