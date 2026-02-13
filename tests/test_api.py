@@ -91,7 +91,6 @@ async def test_metrics_array(
     )
     metrics_array = await api_client.query_metrics_array()
 
-    assert metrics_array.memory_free == 415510528
     assert metrics_array.memory_total == 16646950912
     assert metrics_array.memory_active == 12746354688
     assert metrics_array.memory_percent_total == 76.56870471583932

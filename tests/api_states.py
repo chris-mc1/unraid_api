@@ -40,7 +40,6 @@ class ApiState420(ApiState):
             localurl="http://1.2.3.4", name="Test Server", unraid_version="7.0.1"
         )
         self.metrics_array = MetricsArray(
-            memory_free=415510528,
             memory_total=16646950912,
             memory_active=12746354688,
             memory_available=3900596224,

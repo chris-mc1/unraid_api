@@ -62,7 +62,6 @@ class ServerInfo:
 class MetricsArray:
     """Metrics."""
 
-    memory_free: int
     memory_total: int
     memory_active: int
     memory_available: int
@@ -137,7 +136,6 @@ class CpuMetricsSubscription:
 class MemorySubscription:
     """Memory subscription."""
 
-    free: int
     total: int
     active: int
     available: int

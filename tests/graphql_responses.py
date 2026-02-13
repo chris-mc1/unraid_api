@@ -116,7 +116,6 @@ class GraphqlResponses420(GraphqlResponses):
             "data": {
                 "metrics": {
                     "memory": {
-                        "free": 415510528,
                         "total": 16646950912,
                         "active": 12746354688,
                         "percentTotal": 76.56870471583932,
@@ -221,7 +220,6 @@ class GraphqlResponses420(GraphqlResponses):
         self.memory = [
             {
                 "systemMetricsMemory": {
-                    "free": 248168448,
                     "total": 16644698112,
                     "percentTotal": 70.72346589159935,
                     "active": 11771707392,
@@ -230,7 +228,6 @@ class GraphqlResponses420(GraphqlResponses):
             },
             {
                 "systemMetricsMemory": {
-                    "free": 242290688,
                     "total": 16644698112,
                     "percentTotal": 71.88141588085776,
                     "active": 11964444672,
@@ -254,7 +251,6 @@ class GraphqlResponses426(GraphqlResponses420):
             "data": {
                 "metrics": {
                     "memory": {
-                        "free": 415510528,
                         "total": 16646950912,
                         "active": 12746354688,
                         "percentTotal": 76.56870471583932,
