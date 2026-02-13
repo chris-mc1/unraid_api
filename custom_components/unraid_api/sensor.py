@@ -24,10 +24,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
-from .coordinator import UnraidDataUpdateCoordinator
+from .entity import UnraidBaseEntity, UnraidEntityDescription
 from .models import Disk, DiskType, Share, UpsDevice
 
 if TYPE_CHECKING:
@@ -38,35 +37,41 @@ if TYPE_CHECKING:
     from homeassistant.helpers.typing import StateType
 
     from . import UnraidConfigEntry
+    from .coordinator import UnraidDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class UnraidSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+class UnraidSensorEntityDescription(
+    UnraidEntityDescription, SensorEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid Sensor Entity."""
 
-    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[UnraidDataUpdateCoordinator], StateType]
     extra_values_fn: Callable[[UnraidDataUpdateCoordinator], dict[str, Any]] | None = None
 
 
-class UnraidDiskSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+class UnraidDiskSensorEntityDescription(
+    UnraidEntityDescription, SensorEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid Disk Sensor Entity."""
 
-    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Disk], StateType]
     extra_values_fn: Callable[[Disk], dict[str, Any]] | None = None
 
 
-class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+class UnraidShareSensorEntityDescription(
+    UnraidEntityDescription, SensorEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid Share Sensor Entity."""
 
-    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     value_fn: Callable[[Share], StateType]
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
 
 
-class UnraidUpsSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+class UnraidUpsSensorEntityDescription(
+    UnraidEntityDescription, SensorEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid UPS Sensor Entity."""
 
     min_version: AwesomeVersion = AwesomeVersion("4.26.0")
@@ -456,23 +461,11 @@ async def async_setup_entry(
     config_entry.runtime_data.coordinator.subscribe_ups(add_ups_callback)
 
 
-class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+class UnraidSensor(UnraidBaseEntity, SensorEntity):
     """Sensor for Unraid Server."""
 
     entity_description: UnraidSensorEntityDescription
     _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        description: UnraidSensorEntityDescription,
-        config_entry: UnraidConfigEntry,
-    ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}"
-        self._attr_translation_key = description.key
-        self._attr_available = False
-        self._attr_device_info = config_entry.runtime_data.device_info
 
     @property
     def native_value(self) -> StateType:
@@ -491,11 +484,10 @@ class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity)
         return None
 
 
-class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+class UnraidDiskSensor(UnraidBaseEntity, SensorEntity):
     """Sensor for Unraid Disks."""
 
     entity_description: UnraidDiskSensorEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -503,16 +495,12 @@ class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnt
         config_entry: UnraidConfigEntry,
         disk_id: str,
     ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
+        super().__init__(description, config_entry)
         self.disk_id = disk_id
-        self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.disk_id}"
-        self._attr_translation_key = description.key
         self._attr_translation_placeholders = {
             "disk_name": self.coordinator.data["disks"][self.disk_id].name
         }
-        self._attr_available = False
-        self._attr_device_info = config_entry.runtime_data.device_info
 
     @property
     def native_value(self) -> StateType:
@@ -533,11 +521,10 @@ class UnraidDiskSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnt
         return None
 
 
-class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+class UnraidShareSensor(UnraidBaseEntity, SensorEntity):
     """Sensor for Unraid Shares."""
 
     entity_description: UnraidShareSensorEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -545,14 +532,10 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         config_entry: UnraidConfigEntry,
         share_name: str,
     ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
+        super().__init__(description, config_entry)
         self.share_name = share_name
-        self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.share_name}"
-        self._attr_translation_key = description.key
         self._attr_translation_placeholders = {"share_name": self.share_name}
-        self._attr_available = False
-        self._attr_device_info = config_entry.runtime_data.device_info
 
     @property
     def native_value(self) -> StateType:
@@ -575,11 +558,10 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         return None
 
 
-class UnraidUpsSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+class UnraidUpsSensor(UnraidBaseEntity, SensorEntity):
     """Sensor for Unraid UPS."""
 
     entity_description: UnraidUpsSensorEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -588,12 +570,9 @@ class UnraidUpsSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEnti
         ups_id: str,
         device_info: DeviceInfo,
     ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
+        super().__init__(description, config_entry)
         self.ups_id = ups_id
-        self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.ups_id}"
-        self._attr_translation_key = description.key
-        self._attr_available = False
         self._attr_device_info = device_info
 
     @property
