@@ -9,7 +9,7 @@ from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.api import get_api_client
 from custom_components.unraid_api.models import CpuMetricsSubscription, MemorySubscription
 
-from tests.conftest import AsyncEventMock
+from tests.conftest import EventMock
 
 from .graphql_responses import API_RESPONSES, GraphqlResponses
 
@@ -33,7 +33,7 @@ async def test_subscribe_cpu_percent_total(
     await api_client.start_websocket()
     assert api_client.websocket_connected
 
-    callback_mock = AsyncEventMock()
+    callback_mock = EventMock()
 
     await api_client.subscribe_cpu_usage(callback_mock)
     await callback_mock.wait()
@@ -63,7 +63,7 @@ async def test_subscribe_cpu_metrics(
         await api_client.start_websocket()
         assert api_client.websocket_connected
 
-        callback_mock = AsyncEventMock()
+        callback_mock = EventMock()
 
         await api_client.subscribe_cpu_metrics(callback_mock)
         await callback_mock.wait()
@@ -91,7 +91,7 @@ async def test_subscribe_memory(
     await api_client.start_websocket()
     assert api_client.websocket_connected
 
-    callback_mock = AsyncEventMock()
+    callback_mock = EventMock()
 
     await api_client.subscribe_memory(callback_mock)
     await callback_mock.wait()

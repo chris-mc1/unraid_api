@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 import pytest_asyncio
@@ -44,11 +44,11 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:  
     return
 
 
-class AsyncEventMock(AsyncMock):
+class EventMock(Mock):
     """
-    AsyncMock with internal Event.
+    Mock with internal Event.
 
-    The Event is set and cleared evertime the mock is called.
+    The Event is set and cleared every time the mock is called.
     """
 
     def __init__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
