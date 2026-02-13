@@ -6,13 +6,11 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
-from awesomeversion import AwesomeVersion
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import UnraidDataUpdateCoordinator
+from .entity import UnraidBaseEntity, UnraidEntityDescription
 from .exceptions import GraphQLError, GraphQLMultiError, GraphQLUnauthorizedError
 from .models import ParityCheckStatus
 
@@ -24,15 +22,18 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
     from . import UnraidConfigEntry
+    from .coordinator import UnraidDataUpdateCoordinator
+
 
 PARALLEL_UPDATES = 1
 _LOGGER = logging.getLogger(__name__)
 
 
-class UnraidButtonEntityDescription(ButtonEntityDescription, frozen_or_thawed=True):
+class UnraidButtonEntityDescription(
+    UnraidEntityDescription, ButtonEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid Button Entity."""
 
-    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
     call: Callable[[UnraidDataUpdateCoordinator], CoroutineType[Any, Any, None]]
     available_fn: Callable[[UnraidDataUpdateCoordinator], bool]
 
@@ -41,26 +42,32 @@ BUTTON_DESCRIPTIONS = [
     UnraidButtonEntityDescription(
         key="parity_check_start",
         call=lambda coordinator: coordinator.api_client.start_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        not in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status
+            not in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING)
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_cancel",
         call=lambda coordinator: coordinator.api_client.cancel_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status
+            in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING)
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_pause",
         call=lambda coordinator: coordinator.api_client.pause_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        == ParityCheckStatus.RUNNING,
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status == ParityCheckStatus.RUNNING
+        ),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_resume",
         call=lambda coordinator: coordinator.api_client.resume_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
-        == ParityCheckStatus.PAUSED,
+        available_fn=lambda coordinator: (
+            coordinator.data["metrics_array"].parity_check_status == ParityCheckStatus.PAUSED
+        ),
     ),
 ]
 
@@ -79,28 +86,10 @@ async def async_setup_entry(
     async_add_entites(entities)
 
 
-class UnraidButton(CoordinatorEntity[UnraidDataUpdateCoordinator], ButtonEntity):
+class UnraidButton(UnraidBaseEntity, ButtonEntity):
     """Button for Unraid Server."""
 
     entity_description: UnraidButtonEntityDescription
-    _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        description: UnraidButtonEntityDescription,
-        config_entry: UnraidConfigEntry,
-    ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}"
-        self._attr_translation_key = description.key
-        self._attr_device_info = config_entry.runtime_data.device_info
-
-    @property
-    def available(self) -> bool:
-        return self.coordinator.last_update_success and self.entity_description.available_fn(
-            self.coordinator
-        )
 
     async def async_press(self) -> None:
         try:
