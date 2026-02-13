@@ -13,24 +13,19 @@ from .const import DEFAULT_HOST, MOCK_OPTION_DATA
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-    from tests.conftest import GraphqlServerMocker
-
 
 def add_config_entry(
     hass: HomeAssistant,
-    mocker: GraphqlServerMocker | None = None,
     options: dict[str, Any] | None = None,
 ) -> MockConfigEntry:
     """Add a MockConfigEntry."""
     if options is None:
         options = MOCK_OPTION_DATA
 
-    host = DEFAULT_HOST if mocker is None else mocker.host
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_HOST: host,
+            CONF_HOST: DEFAULT_HOST,
             CONF_API_KEY: "test_key",
             CONF_VERIFY_SSL: False,
         },
@@ -42,11 +37,10 @@ def add_config_entry(
 
 async def setup_config_entry(
     hass: HomeAssistant,
-    mocker: GraphqlServerMocker | None = None,
     options: dict[str, Any] | None = None,
 ) -> MockConfigEntry:
     """Do add and setup a MockConfigEntry."""
-    entry = add_config_entry(hass, mocker, options)
+    entry = add_config_entry(hass, options)
 
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()

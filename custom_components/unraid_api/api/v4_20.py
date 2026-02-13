@@ -3,23 +3,27 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
 from custom_components.unraid_api.models import (
-    Array,
     ArrayState,
     Disk,
     DiskStatus,
     DiskType,
-    Metrics,
+    MemorySubscription,
+    MetricsArray,
     ParityCheckStatus,
     ServerInfo,
     Share,
 )
 
 from . import UnraidApiClient
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class UnraidApiV420(UnraidApiClient):
@@ -39,15 +43,25 @@ class UnraidApiV420(UnraidApiClient):
             unraid_version=response.info.versions.core.unraid,
         )
 
-    async def query_metrics(self) -> Metrics:
-        response = await self.call_api(METRICS_QUERY, MetricsQuery)
-        return Metrics(
+    async def query_metrics_array(self) -> MetricsArray:
+        response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
+        return MetricsArray(
             memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
             memory_available=response.metrics.memory.available,
             memory_percent_total=response.metrics.memory.percent_total,
             cpu_percent_total=response.metrics.cpu.percent_total,
+            state=response.array.state,
+            capacity_free=response.array.capacity.kilobytes.free,
+            capacity_used=response.array.capacity.kilobytes.used,
+            capacity_total=response.array.capacity.kilobytes.total,
+            parity_check_status=response.array.parity_check.status,
+            parity_check_date=response.array.parity_check.date,
+            parity_check_duration=response.array.parity_check.duration,
+            parity_check_speed=response.array.parity_check.speed,
+            parity_check_errors=response.array.parity_check.errors,
+            parity_check_progress=response.array.parity_check.progress,
         )
 
     async def query_shares(self) -> list[Share]:
@@ -114,19 +128,30 @@ class UnraidApiV420(UnraidApiClient):
         )
         return disks
 
-    async def query_array(self) -> Array:
-        response = await self.call_api(ARRAY_QUERY, ArrayQuery)
-        return Array(
-            state=response.array.state,
-            capacity_free=response.array.capacity.kilobytes.free,
-            capacity_used=response.array.capacity.kilobytes.used,
-            capacity_total=response.array.capacity.kilobytes.total,
-            parity_check_status=response.array.parity_check.status,
-            parity_check_date=response.array.parity_check.date,
-            parity_check_duration=response.array.parity_check.duration,
-            parity_check_speed=response.array.parity_check.speed,
-            parity_check_errors=response.array.parity_check.errors,
-            parity_check_progress=response.array.parity_check.progress,
+    async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
+        def _callback(data: Any) -> None:
+            model = SystemMetricsCpuSubscription.model_validate(data)
+            callback(model.system_metrics_cpu.percent_total)
+
+        await self._subscribe(
+            query=CPU_USAGE_SUBSCRIPTION, operation_name="CpuUsage", callback=_callback
+        )
+
+    async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
+        def _callback(data: Any) -> None:
+            model = SystemMetricsMemorySubscription.model_validate(data)
+            callback(
+                MemorySubscription(
+                    free=model.system_metrics_memory.free,
+                    total=model.system_metrics_memory.total,
+                    active=model.system_metrics_memory.active,
+                    available=model.system_metrics_memory.available,
+                    percent_total=model.system_metrics_memory.percent_total,
+                )
+            )
+
+        await self._subscribe(
+            query=MEMORY_SUBSCRIPTION, operation_name="Memory", callback=_callback
         )
 
     async def start_parity_check(self) -> None:
@@ -160,8 +185,8 @@ query ServerInfo {
 }
 """
 
-METRICS_QUERY = """
-query Metrics {
+METRICS_ARRAY_QUERY = """
+query MetricsArray {
   metrics {
     memory {
       free
@@ -172,6 +197,16 @@ query Metrics {
     }
     cpu {
       percentTotal
+    }
+  }
+  array {
+    state
+    capacity {
+      kilobytes {
+        free
+        used
+        total
+      }
     }
   }
 }
@@ -225,20 +260,6 @@ query Disks {
       isSpinning
     }
   }
-}
-"""
-
-ARRAY_QUERY = """
-query Array {
-  array {
-    state
-    capacity {
-      kilobytes {
-        free
-        used
-        total
-      }
-    }
     parityCheckStatus {
       date
       duration
@@ -247,6 +268,27 @@ query Array {
       errors
       progress
     }
+}
+"""
+
+
+## Subscription
+CPU_USAGE_SUBSCRIPTION = """
+subscription CpuUsage {
+  systemMetricsCpu {
+    percentTotal
+  }
+}
+"""
+
+MEMORY_SUBSCRIPTION = """
+subscription Memory {
+  systemMetricsMemory {
+    free
+    total
+    percentTotal
+    active
+    available
   }
 }
 
@@ -310,9 +352,10 @@ class InfoVersionsCore(BaseModel):  # noqa: D101
     unraid: str
 
 
-### Metrics
-class MetricsQuery(BaseModel):  # noqa: D101
+### Metrics and Array
+class MetricsArrayQuery(BaseModel):  # noqa: D101
     metrics: _Metrics
+    array: _Array
 
 
 class _Metrics(BaseModel):
@@ -330,6 +373,31 @@ class MetricsMemory(BaseModel):  # noqa: D101
 
 class MetricsCpu(BaseModel):  # noqa: D101
     percent_total: float = Field(alias="percentTotal")
+
+
+class _Array(BaseModel):
+    state: ArrayState
+    capacity: ArrayCapacity
+    parity_check: ParityCheck = Field(alias="parityCheckStatus")
+
+
+class ArrayCapacity(BaseModel):  # noqa: D101
+    kilobytes: ArrayCapacityKilobytes
+
+
+class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
+    free: int
+    used: int
+    total: int
+
+
+class ParityCheck(BaseModel):  # noqa: D101
+    date: datetime
+    duration: int
+    speed: float
+    status: ParityCheckStatus
+    errors: int | None
+    progress: int
 
 
 ### Shares
@@ -372,31 +440,15 @@ class FSDisk(ParityDisk):  # noqa: D101
     fs_used: int | None = Field(alias="fsUsed")
 
 
-### Array
-class ArrayQuery(BaseModel):  # noqa: D101
-    array: _Array
+### CpuMetrics
+class SystemMetricsCpu(BaseModel):  # noqa: D101
+    percent_total: float = Field(alias="percentTotal")
 
 
-class _Array(BaseModel):
-    state: ArrayState
-    capacity: ArrayCapacity
-    parity_check: ParityCheck = Field(alias="parityCheckStatus")
+class SystemMetricsCpuSubscription(BaseModel):  # noqa: D101
+    system_metrics_cpu: SystemMetricsCpu = Field(alias="systemMetricsCpu")
 
 
-class ArrayCapacity(BaseModel):  # noqa: D101
-    kilobytes: ArrayCapacityKilobytes
-
-
-class ArrayCapacityKilobytes(BaseModel):  # noqa: D101
-    free: int
-    used: int
-    total: int
-
-
-class ParityCheck(BaseModel):  # noqa: D101
-    date: datetime
-    duration: int
-    speed: float
-    status: ParityCheckStatus
-    errors: int | None
-    progress: int
+### Memory
+class SystemMetricsMemorySubscription(BaseModel):  # noqa: D101
+    system_metrics_memory: MetricsMemory = Field(alias="systemMetricsMemory")

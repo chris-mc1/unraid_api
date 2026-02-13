@@ -14,10 +14,9 @@ from homeassistant.components.button import (
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.unraid_api.api import UnraidAuthError, UnraidGraphQLError
-from custom_components.unraid_api.const import DOMAIN
-
+from .const import DOMAIN
 from .coordinator import UnraidDataUpdateCoordinator
+from .exceptions import GraphQLError, GraphQLMultiError, GraphQLUnauthorizedError
 from .models import ParityCheckStatus
 
 if TYPE_CHECKING:
@@ -45,25 +44,25 @@ BUTTON_DESCRIPTIONS = [
     UnraidButtonEntityDescription(
         key="parity_check_start",
         call=lambda coordinator: coordinator.api_client.start_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["array"].parity_check_status
+        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
         not in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_cancel",
         call=lambda coordinator: coordinator.api_client.cancel_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["array"].parity_check_status
+        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
         in (ParityCheckStatus.PAUSED, ParityCheckStatus.RUNNING),
     ),
     UnraidButtonEntityDescription(
         key="parity_check_pause",
         call=lambda coordinator: coordinator.api_client.pause_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["array"].parity_check_status
+        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
         == ParityCheckStatus.RUNNING,
     ),
     UnraidButtonEntityDescription(
         key="parity_check_resume",
         call=lambda coordinator: coordinator.api_client.resume_parity_check(),
-        available_fn=lambda coordinator: coordinator.data["array"].parity_check_status
+        available_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status
         == ParityCheckStatus.PAUSED,
     ),
 ]
@@ -123,17 +122,17 @@ class UnraidButton(CoordinatorEntity[UnraidDataUpdateCoordinator], ButtonEntity)
                 translation_key="cannot_connect",
                 translation_placeholders={"error": str(exc)},
             ) from exc
-        except UnraidAuthError as exc:
+        except GraphQLUnauthorizedError as exc:
             _LOGGER.debug("Button: Auth failed")
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="auth_failed",
-                translation_placeholders={"error_msg": exc.args[0]},
+                translation_placeholders={"error_msg": str(exc)},
             ) from exc
-        except UnraidGraphQLError as exc:
-            _LOGGER.debug("Button: GraphQL Error response: %s", exc.response)
+        except (GraphQLError, GraphQLMultiError) as exc:
+            _LOGGER.debug("Button: GraphQL Error response: %s", str(exc))
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="error_response",
-                translation_placeholders={"error_msg": exc.args[0]},
+                translation_placeholders={"error_msg": str(exc)},
             ) from exc

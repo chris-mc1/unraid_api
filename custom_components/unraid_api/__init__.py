@@ -6,16 +6,22 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientConnectionError, ClientConnectorSSLError
+from aiohttp import ClientConnectionError, ClientSSLError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 
-from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
+from .api import get_api_client
 from .const import DOMAIN, PLATFORMS
 from .coordinator import UnraidDataUpdateCoordinator
+from .exceptions import (
+    GraphQLError,
+    GraphQLMultiError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -48,7 +54,7 @@ async def async_setup_entry(
         )
 
         server_info = await api_client.query_server_info()
-    except ClientConnectorSSLError as exc:
+    except ClientSSLError as exc:
         _LOGGER.debug("Init: SSL error: %s", str(exc))
         raise ConfigEntryError(
             translation_domain=DOMAIN,
@@ -62,19 +68,19 @@ async def async_setup_entry(
             translation_key="cannot_connect",
             translation_placeholders={"error": str(exc)},
         ) from exc
-    except UnraidAuthError as exc:
+    except GraphQLUnauthorizedError as exc:
         _LOGGER.debug("Init: Auth failed")
         raise ConfigEntryAuthFailed(
             translation_domain=DOMAIN,
             translation_key="auth_failed",
-            translation_placeholders={"error_msg": exc.args[0]},
+            translation_placeholders={"error_msg": str(exc)},
         ) from exc
-    except UnraidGraphQLError as exc:
-        _LOGGER.debug("Init: GraphQL Error response: %s", exc.response)
+    except (GraphQLError, GraphQLMultiError) as exc:
+        _LOGGER.debug("Init: GraphQL Error response: %s", str(exc))
         raise ConfigEntryError(
             translation_domain=DOMAIN,
             translation_key="error_response",
-            translation_placeholders={"error_msg": exc.args[0]},
+            translation_placeholders={"error_msg": str(exc)},
         ) from exc
     except IncompatibleApiError as exc:
         _LOGGER.debug("Init: Incompatible API, %s < %s", exc.version, exc.min_version)
@@ -105,5 +111,6 @@ async def async_setup_entry(
 async def async_unload_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bool:
     """Unload qBittorrent config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        await entry.runtime_data.coordinator.api_client.stop_websocket()
         del entry.runtime_data
     return unload_ok

@@ -2,23 +2,36 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+import asyncio
 from typing import TYPE_CHECKING, Any
-from unittest import mock
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 import pytest_asyncio
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient, TestServer
-from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
+from custom_components.unraid_api.api import GRAPHQL_WS_PROTOCOL, GraphQLWebsocketMessageType
+
+from .api_states import API_STATE_LATEST, ApiState
 
 if TYPE_CHECKING:
-    from asyncio import AbstractEventLoop
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator
+    from collections.abc import (
+        AsyncGenerator,
+        Awaitable,
+        Callable,
+        Generator,
+    )
 
-    from homeassistant.core import Event, HomeAssistant
-    from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+    from awesomeversion import AwesomeVersion
+    from custom_components.unraid_api.models import (
+        CpuMetricsSubscription,
+        Disk,
+        MemorySubscription,
+        MetricsArray,
+        ServerInfo,
+        Share,
+        UpsDevice,
+    )
 
     from .graphql_responses import GraphqlResponses
 
@@ -31,15 +44,41 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:  
     return
 
 
+class EventMock(Mock):
+    """
+    Mock with internal Event.
+
+    The Event is set and cleared every time the mock is called.
+    """
+
+    def __init__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
+        super().__init__(*args, **kwargs)
+        self._call_event = asyncio.Event()
+        self.wait = self._call_event.wait
+
+    def __call__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
+        return_value = super().__call__(*args, **kwargs)
+        self._call_event.set()
+        self._call_event.clear()
+        return return_value
+
+
 class GraphqlServerMocker:
     """Mock GraphQL client requests."""
+
+    ws: web.WebSocketResponse | None = None
 
     def __init__(self, response_set: type[GraphqlResponses]) -> None:
         self.responses = response_set()
         self.app = web.Application()
-        self.app.add_routes([web.post("/graphql", self.handler)])
-        self.server = TestServer(self.app)
-        self.clients = set[GraphqlServerMocker]()
+        self.app.add_routes(
+            [web.post("/graphql", self.handler), web.get("/graphql", self.websocket_handler)]
+        )
+        self.server = TestServer(self.app, skip_url_asserts=True)
+        self.clients = set[ClientSession]()
+
+        self._ws_msg = list[str]()
+        self._ws_subscriptions = dict[str, str]()
 
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -48,9 +87,50 @@ class GraphqlServerMocker:
         response = self.responses.get_response(query)
         return web.json_response(data=response)
 
-    def create_session(self, loop: AbstractEventLoop | None = None) -> TestClient:
+    async def websocket_handler(self, request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse(
+            heartbeat=2,
+            protocols=(GRAPHQL_WS_PROTOCOL,),
+        )
+        await ws.prepare(request)
+        self.ws = ws
+        while not ws.closed:
+            async for msg in ws:
+                if msg.type != web.WSMsgType.TEXT:
+                    continue
+                message = msg.json()
+                self._ws_msg.append(message)
+                if message["type"] == GraphQLWebsocketMessageType.CONNECTION_INIT:
+                    await ws.send_json({"type": GraphQLWebsocketMessageType.CONNECTION_ACK.value})
+                elif message["type"] == GraphQLWebsocketMessageType.SUBSCRIBE:
+                    query: str = message["payload"]["query"]
+                    query = query.split(" ")[1]
+                    self._ws_subscriptions[query] = message["id"]
+                    response = self.responses.get_subscription(query)
+                    await self.ws.send_json(
+                        {
+                            "id": message["id"],
+                            "type": GraphQLWebsocketMessageType.NEXT.value,
+                            "payload": {"data": response},
+                        }
+                    )
+        self.ws = None
+        return ws
+
+    async def send_subscription(self, index: int = 0) -> None:
+        for query, op_id in self._ws_subscriptions.items():
+            response = self.responses.get_subscription(query, index)
+            await self.ws.send_json(
+                {
+                    "id": op_id,
+                    "type": GraphQLWebsocketMessageType.NEXT.value,
+                    "payload": {"data": response},
+                }
+            )
+
+    def create_session(self) -> TestClient:
         """Create a ClientSession that is bound to this mocker."""
-        client = TestClient(self.server, loop=loop)
+        client = ClientSession()
         self.clients.add(client)
         return client
 
@@ -58,6 +138,8 @@ class GraphqlServerMocker:
         await self.server.start_server()
 
     async def close(self) -> None:
+        if self.ws:
+            await self.ws.send_json({"type": GraphQLWebsocketMessageType.COMPLETE.value})
         while self.clients:
             await self.clients.pop().close()
         await self.server.close()
@@ -112,23 +194,62 @@ async def mock_graphql_server(
         await mocks.pop().close()
 
 
-@contextmanager
-def mock_aiohttp_client(mocker: GraphqlServerMocker) -> Iterator[AiohttpClientMocker]:
-    """Context manager to mock aiohttp client."""
+class MockApiClient:
+    """Mock GraphQL API Client."""
 
-    def create_session(hass: HomeAssistant, *args: Any, **kwargs: Any) -> ClientSession:  # noqa: ARG001
-        session = mocker.create_session(hass.loop)
+    state: ApiState
+    websocket_connected = False
+    cpu_usage_callback: Callable[[float], None]
+    cpu_metrics_callback: Callable[[CpuMetricsSubscription]]
+    memory_callback: Callable[[MemorySubscription]]
 
-        async def close_session(event: Event) -> None:  # noqa: ARG001
-            """Close session."""
-            await session.close()
+    def __init__(self, state: type[ApiState]) -> None:
+        self.state = state()
 
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, close_session)
+    @property
+    def version(self) -> AwesomeVersion:
+        return self.state.version
 
-        return session
+    async def start_websocket(self) -> None:
+        pass
 
-    with mock.patch(
-        "homeassistant.helpers.aiohttp_client._async_create_clientsession",
-        side_effect=create_session,
-    ):
-        yield mocker
+    async def stop_websocket(self) -> None:
+        pass
+
+    async def query_server_info(self) -> ServerInfo:
+        return self.state.server_info
+
+    async def query_metrics_array(self) -> MetricsArray:
+        return self.state.metrics_array
+
+    async def query_shares(self) -> list[Share]:
+        return self.state.shares
+
+    async def query_disks(self) -> list[Disk]:
+        return self.state.disks
+
+    async def query_ups(self) -> list[UpsDevice]:
+        return self.state.ups
+
+    async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
+        self.cpu_usage_callback = callback
+
+    async def subscribe_cpu_metrics(
+        self, callback: Callable[[CpuMetricsSubscription], None]
+    ) -> None:
+        self.cpu_metrics_callback = callback
+
+    async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
+        self.memory_callback = callback
+
+
+@pytest.fixture
+def mock_api_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[MagicMock]:
+    """Override get_api_client."""
+    mock_api_client = AsyncMock(return_value=MockApiClient(API_STATE_LATEST))
+    with monkeypatch.context() as m:
+        m.setattr("custom_components.unraid_api.config_flow.get_api_client", mock_api_client)
+        m.setattr("custom_components.unraid_api.get_api_client", mock_api_client)
+        yield mock_api_client

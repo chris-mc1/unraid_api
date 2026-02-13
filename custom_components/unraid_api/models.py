@@ -59,7 +59,7 @@ class ServerInfo:
 
 
 @dataclass
-class Metrics:
+class MetricsArray:
     """Metrics."""
 
     memory_free: int
@@ -68,6 +68,16 @@ class Metrics:
     memory_available: int
     memory_percent_total: float
     cpu_percent_total: float
+    state: ArrayState
+    capacity_free: int
+    capacity_used: int
+    capacity_total: int
+    parity_check_status: ParityCheckStatus
+    parity_check_date: datetime
+    parity_check_duration: int
+    parity_check_speed: float
+    parity_check_errors: int | None
+    parity_check_progress: int
     cpu_temp: float | None = None
     cpu_power: float | None = None
 
@@ -100,16 +110,35 @@ class Disk:
 
 
 @dataclass
-class Array:
-    """Array."""
+class UpsDevice:
+    """UPS device."""
 
-    state: ArrayState
-    capacity_free: int
-    capacity_used: int
-    capacity_total: int
-    parity_check_status: ParityCheckStatus
-    parity_check_date: datetime
-    parity_check_duration: int
-    parity_check_speed: float
-    parity_check_errors: int | None
-    parity_check_progress: int
+    id: str
+    name: str
+    model: str
+    status: str
+    battery_level: int
+    battery_runtime: int
+    battery_health: str
+    load_percentage: float
+    output_voltage: float
+    input_voltage: float
+
+
+@dataclass
+class CpuMetricsSubscription:
+    """Cpu metrics subscription."""
+
+    power: float
+    temp: float
+
+
+@dataclass
+class MemorySubscription:
+    """Memory subscription."""
+
+    free: int
+    total: int
+    active: int
+    available: int
+    percent_total: float

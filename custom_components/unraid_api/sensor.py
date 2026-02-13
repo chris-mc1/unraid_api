@@ -16,17 +16,19 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfDataRate,
+    UnitOfElectricPotential,
     UnitOfInformation,
     UnitOfPower,
     UnitOfTemperature,
     UnitOfTime,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_DRIVES, CONF_SHARES
+from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from .coordinator import UnraidDataUpdateCoordinator
-from .models import Disk, DiskType, Share
+from .models import Disk, DiskType, Share, UpsDevice
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -64,10 +66,17 @@ class UnraidShareSensorEntityDescription(SensorEntityDescription, frozen_or_thaw
     extra_values_fn: Callable[[Share], dict[str, Any]] | None = None
 
 
+class UnraidUpsSensorEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
+    """Description for Unraid UPS Sensor Entity."""
+
+    min_version: AwesomeVersion = AwesomeVersion("4.26.0")
+    value_fn: Callable[[UpsDevice], StateType]
+
+
 def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> StateType:
     """Calculate the array usage percentage."""
-    used = coordinator.data["array"].capacity_used
-    total = coordinator.data["array"].capacity_total
+    used = coordinator.data["metrics_array"].capacity_used
+    total = coordinator.data["metrics_array"].capacity_total
     return (used / total) * 100
 
 
@@ -82,7 +91,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     UnraidSensorEntityDescription(
         key="array_state",
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.data["array"].state.lower(),
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].state.lower(),
         options=[
             "started",
             "stopped",
@@ -104,9 +113,9 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         suggested_display_precision=2,
         value_fn=calc_array_usage_percentage,
         extra_values_fn=lambda coordinator: {
-            "used": coordinator.data["array"].capacity_used,
-            "free": coordinator.data["array"].capacity_free,
-            "total": coordinator.data["array"].capacity_total,
+            "used": coordinator.data["metrics_array"].capacity_used,
+            "free": coordinator.data["metrics_array"].capacity_free,
+            "total": coordinator.data["metrics_array"].capacity_total,
         },
     ),
     UnraidSensorEntityDescription(
@@ -116,7 +125,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["array"].capacity_free,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].capacity_free,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
@@ -126,7 +135,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["array"].capacity_used,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].capacity_used,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
@@ -134,12 +143,12 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].memory_percent_total,
+        value_fn=lambda coordinator: coordinator.data["memory"].percent_total,
         extra_values_fn=lambda coordinator: {
-            "used": coordinator.data["metrics"].memory_active,
-            "free": coordinator.data["metrics"].memory_free,
-            "total": coordinator.data["metrics"].memory_total,
-            "available": coordinator.data["metrics"].memory_available,
+            "used": coordinator.data["memory"].active,
+            "free": coordinator.data["memory"].free,
+            "total": coordinator.data["memory"].total,
+            "available": coordinator.data["memory"].available,
         },
     ),
     UnraidSensorEntityDescription(
@@ -149,7 +158,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].memory_active,
+        value_fn=lambda coordinator: coordinator.data["memory"].active,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
@@ -159,7 +168,7 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].memory_free,
+        value_fn=lambda coordinator: coordinator.data["memory"].free,
         entity_registry_enabled_default=False,
     ),
     UnraidSensorEntityDescription(
@@ -167,26 +176,28 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].cpu_percent_total,
+        value_fn=lambda coordinator: coordinator.data["cpu_usage"],
     ),
     UnraidSensorEntityDescription(
         key="cpu_temp",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].cpu_temp,
+        value_fn=lambda coordinator: coordinator.data["cpu_metrics"].temp,
+        min_version=AwesomeVersion("4.26.0"),
     ),
     UnraidSensorEntityDescription(
         key="cpu_power",
         native_unit_of_measurement=UnitOfPower.WATT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        value_fn=lambda coordinator: coordinator.data["metrics"].cpu_power,
+        value_fn=lambda coordinator: coordinator.data["cpu_metrics"].power,
+        min_version=AwesomeVersion("4.26.0"),
     ),
     UnraidSensorEntityDescription(
         key="parity_check_status",
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_status.lower(),
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status.lower(),
         options=[
             "never_run",
             "running",
@@ -199,29 +210,69 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
     UnraidSensorEntityDescription(
         key="parity_check_date",
         device_class=SensorDeviceClass.DATE,
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_date,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_date,
     ),
     UnraidSensorEntityDescription(
         key="parity_check_duration",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
         suggested_unit_of_measurement=UnitOfTime.HOURS,
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_duration,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_duration,
     ),
     UnraidSensorEntityDescription(
         key="parity_check_speed",
         device_class=SensorDeviceClass.DATA_RATE,
         native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_speed,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_speed,
     ),
     UnraidSensorEntityDescription(
         key="parity_check_errors",
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_errors,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_errors,
     ),
     UnraidSensorEntityDescription(
         key="parity_check_progress",
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda coordinator: coordinator.data["array"].parity_check_progress,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_progress,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_status",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status.lower(),
+        options=[
+            "never_run",
+            "running",
+            "paused",
+            "completed",
+            "cancelled",
+            "failed",
+        ],
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_date",
+        device_class=SensorDeviceClass.DATE,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_date,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_duration",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.HOURS,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_duration,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_speed,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_errors",
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_errors,
+    ),
+    UnraidSensorEntityDescription(
+        key="parity_check_progress",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_progress,
     ),
 )
 
@@ -285,7 +336,6 @@ DISK_SENSOR_SPACE_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = 
 SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
     UnraidShareSensorEntityDescription(
         key="share_free",
-        name="free space",
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfInformation.KILOBYTES,
@@ -298,6 +348,47 @@ SHARE_SENSOR_DESCRIPTIONS: tuple[UnraidShareSensorEntityDescription, ...] = (
             "allocator": share.allocator,
             "floor": share.floor,
         },
+    ),
+)
+
+UPS_SENSOR_DESCRIPTIONS: tuple[UnraidUpsSensorEntityDescription, ...] = (
+    UnraidUpsSensorEntityDescription(
+        key="ups_status",
+        value_fn=lambda device: device.status,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_level",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda device: device.battery_level,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_runtime",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=lambda device: device.battery_runtime,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_health",
+        value_fn=lambda device: device.battery_health,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_load",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda device: device.load_percentage,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_input_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        value_fn=lambda device: device.input_voltage,
+    ),
+    UnraidUpsSensorEntityDescription(
+        key="ups_output_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        value_fn=lambda device: device.output_voltage,
     ),
 )
 
@@ -342,10 +433,27 @@ async def async_setup_entry(
         ]
         async_add_entites(entities)
 
+    @callback
+    def add_ups_callback(device: UpsDevice) -> None:
+        _LOGGER.debug("Adding new UPS: %s", device.name)
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_{device.id}")},
+            name=device.name,
+            model=device.model,
+            via_device=(DOMAIN, config_entry.entry_id),
+        )
+        entities = [
+            UnraidUpsSensor(description, config_entry, device.id, device_info)
+            for description in UPS_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
+        ]
+        async_add_entites(entities)
+
     if config_entry.options[CONF_DRIVES]:
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
     if config_entry.options[CONF_SHARES]:
         config_entry.runtime_data.coordinator.subscribe_shares(add_share_callback)
+    config_entry.runtime_data.coordinator.subscribe_ups(add_ups_callback)
 
 
 class UnraidSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
@@ -465,3 +573,41 @@ class UnraidShareSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEn
         except (KeyError, AttributeError):
             return None
         return None
+
+
+class UnraidUpsSensor(CoordinatorEntity[UnraidDataUpdateCoordinator], SensorEntity):
+    """Sensor for Unraid UPS."""
+
+    entity_description: UnraidUpsSensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        description: UnraidUpsSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+        ups_id: str,
+        device_info: DeviceInfo,
+    ) -> None:
+        super().__init__(config_entry.runtime_data.coordinator)
+        self.ups_id = ups_id
+        self.entity_description = description
+        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.ups_id}"
+        self._attr_translation_key = description.key
+        self._attr_available = False
+        self._attr_device_info = device_info
+
+    @property
+    def native_value(self) -> StateType:
+        try:
+            return self.entity_description.value_fn(
+                self.coordinator.data["ups_devices"][self.ups_id]
+            )
+        except (KeyError, AttributeError):
+            return None
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.ups_id in self.coordinator.data["ups_devices"]
+            and self.coordinator.last_update_success
+        )

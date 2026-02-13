@@ -1,19 +1,21 @@
 """API Client Tests."""
 
-from collections.abc import Awaitable, Callable
+from __future__ import annotations
+
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from custom_components.unraid_api.api import (
-    IncompatibleApiError,
-    UnraidApiClient,
-    get_api_client,
-)
+from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, get_api_client
+from custom_components.unraid_api.api import _normalize_url as normalize_url
 from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
 
-from tests.conftest import GraphqlServerMocker
-
 from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from .conftest import GraphqlServerMocker
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
@@ -24,7 +26,9 @@ async def test_get_api_client(
     """Test get_api_client."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
 
     assert api_client.version == api_responses.version
 
@@ -37,7 +41,7 @@ async def test_get_api_client_incompatible(
     session = mocker.create_session()
 
     with pytest.raises(IncompatibleApiError):
-        await get_api_client("", "test_key", session)
+        await get_api_client(f"{mocker.server.host}:{mocker.server.port}", "test_key", session)
 
 
 @pytest.mark.parametrize(("api_responses"), API_RESPONSES)
@@ -48,7 +52,7 @@ async def test_api_version(
     """Test querying api version."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = UnraidApiClient("", "test_key", session)
+    api_client = UnraidApiClient(f"{mocker.server.host}:{mocker.server.port}", "test_key", session)
 
     api_version = await api_client.query_api_version()
 
@@ -63,7 +67,9 @@ async def test_server_info(
     """Test querying server info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
 
     server_info = await api_client.query_server_info()
 
@@ -73,23 +79,37 @@ async def test_server_info(
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_metrics(
+async def test_metrics_array(
     api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
-    """Test querying metrics."""
+    """Test querying metrics and array."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
+    metrics_array = await api_client.query_metrics_array()
 
-    metrics = await api_client.query_metrics()
+    assert metrics_array.memory_free == 415510528
+    assert metrics_array.memory_total == 16646950912
+    assert metrics_array.memory_active == 12746354688
+    assert metrics_array.memory_percent_total == 76.56870471583932
+    assert metrics_array.memory_available == 3900596224
+    assert metrics_array.cpu_percent_total == 5.1
+    assert metrics_array.state == ArrayState.STARTED
+    assert metrics_array.capacity_free == 523094720
+    assert metrics_array.capacity_used == 11474981430
+    assert metrics_array.capacity_total == 11998076150
 
-    assert metrics.memory_free == 415510528
-    assert metrics.memory_total == 16646950912
-    assert metrics.memory_active == 12746354688
-    assert metrics.memory_percent_total == 76.56870471583932
-    assert metrics.memory_available == 3900596224
-    assert metrics.cpu_percent_total == 5.1
+    assert metrics_array.parity_check_status == ParityCheckStatus.COMPLETED
+    assert metrics_array.parity_check_date == datetime(
+        year=2025, month=9, day=27, hour=22, minute=0, second=1, tzinfo=UTC
+    )
+    assert metrics_array.parity_check_duration == 5982
+    assert metrics_array.parity_check_speed == 10
+    assert metrics_array.parity_check_errors is None
+    assert metrics_array.parity_check_progress == 0
 
 
 @pytest.mark.parametrize("api_responses", API_RESPONSES)
@@ -100,8 +120,9 @@ async def test_shares(
     """Test querying share info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
-
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
     shares = await api_client.query_shares()
 
     assert shares[0].name == "Share_1"
@@ -127,8 +148,9 @@ async def test_disks(
     """Test querying disk info."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
-
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
     disks = await api_client.query_disks()
 
     assert disks[0].name == "disk1"
@@ -162,28 +184,24 @@ async def test_disks(
     assert disks[2].is_spinning is False
 
 
-@pytest.mark.parametrize("api_responses", API_RESPONSES)
-async def test_array(
-    api_responses: GraphqlResponses,
-    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
-) -> None:
-    """Test querying array info."""
-    mocker = await mock_graphql_server(api_responses)
-    session = mocker.create_session()
-    api_client = await get_api_client("", "test_key", session)
+def test_normalize_url() -> None:
+    """Test URL normalization."""
+    assert str(normalize_url("192.168.1.10")) == "http://192.168.1.10"
+    assert str(normalize_url("http://192.168.1.10")) == "http://192.168.1.10"
+    assert str(normalize_url("https://192.168.1.10")) == "https://192.168.1.10"
+    assert str(normalize_url("192.168.1.10/graphql")) == "http://192.168.1.10"
 
-    array = await api_client.query_array()
+    assert str(normalize_url("192.168.1.10:8080")) == "http://192.168.1.10:8080"
+    assert str(normalize_url("http://192.168.1.10:8080")) == "http://192.168.1.10:8080"
+    assert str(normalize_url("https://192.168.1.10:8080")) == "https://192.168.1.10:8080"
+    assert str(normalize_url("192.168.1.10:8080/graphql")) == "http://192.168.1.10:8080"
 
-    assert array.state == ArrayState.STARTED
-    assert array.capacity_free == 523094720
-    assert array.capacity_used == 11474981430
-    assert array.capacity_total == 11998076150
+    assert str(normalize_url("unraid.lan")) == "http://unraid.lan"
+    assert str(normalize_url("http://unraid.lan")) == "http://unraid.lan"
+    assert str(normalize_url("https://unraid.lan")) == "https://unraid.lan"
+    assert str(normalize_url("unraid.lan/graphql")) == "http://unraid.lan"
 
-    assert array.parity_check_status == ParityCheckStatus.COMPLETED
-    assert array.parity_check_date == datetime(
-        year=2025, month=9, day=27, hour=22, minute=0, second=1, tzinfo=UTC
-    )
-    assert array.parity_check_duration == 5982
-    assert array.parity_check_speed == 10
-    assert array.parity_check_errors is None
-    assert array.parity_check_progress == 0
+    assert str(normalize_url("unraid.lan:8080")) == "http://unraid.lan:8080"
+    assert str(normalize_url("http://unraid.lan:8080")) == "http://unraid.lan:8080"
+    assert str(normalize_url("https://unraid.lan:8080")) == "https://unraid.lan:8080"
+    assert str(normalize_url("unraid.lan:8080/graphql")) == "http://unraid.lan:8080"

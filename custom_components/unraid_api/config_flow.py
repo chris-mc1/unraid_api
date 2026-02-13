@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from aiohttp import (
     ClientConnectionError,
-    ClientConnectorSSLError,
+    ClientSSLError,
     ContentTypeError,
     InvalidUrlClientError,
 )
@@ -20,8 +20,14 @@ from homeassistant.helpers.selector import BooleanSelector
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
-from .api import IncompatibleApiError, UnraidAuthError, UnraidGraphQLError, get_api_client
+from .api import get_api_client
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .exceptions import (
+    GraphQLError,
+    GraphQLMultiError,
+    GraphQLUnauthorizedError,
+    IncompatibleApiError,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
@@ -79,19 +85,19 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             response = await api_client.query_server_info()
             self.title = response.name
-        except ClientConnectorSSLError:
+        except ClientSSLError:
             _LOGGER.exception("SSL error")
             self.errors = {"base": "ssl_error"}
         except (ClientConnectionError, TimeoutError, ContentTypeError):
             _LOGGER.exception("Connection error")
             self.errors = {"base": "cannot_connect"}
-        except UnraidAuthError:
+        except GraphQLUnauthorizedError:
             _LOGGER.exception("Auth failed")
             self.errors = {"base": "auth_failed"}
-        except UnraidGraphQLError as exc:
-            _LOGGER.exception("GraphQL Error response: %s", exc.response)
+        except (GraphQLError, GraphQLMultiError) as exc:
+            _LOGGER.exception("GraphQL Error response")
             self.errors = {"base": "error_response"}
-            self.description_placeholders["error_msg"] = exc.args[0]
+            self.description_placeholders["error_msg"] = str(exc)
         except InvalidUrlClientError:
             self.errors = {"base": "invalid_url"}
         except IncompatibleApiError as exc:

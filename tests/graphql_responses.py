@@ -13,10 +13,14 @@ class GraphqlResponses:
     version = AwesomeVersion("4.20.0")
     api_version: ClassVar[dict]
     server_info: ClassVar[dict]
-    metrics: ClassVar[dict]
+    metrics_array: ClassVar[dict]
     shares: ClassVar[dict]
     disks: ClassVar[dict]
-    array: ClassVar[dict]
+    ups: ClassVar[dict]
+
+    cpu_percent_total: ClassVar[list[dict]]
+    cpu_metrics: ClassVar[list[dict]]
+    memory: ClassVar[list[dict]]
 
     is_unauthenticated = False
     unauthenticated: ClassVar[dict] = {
@@ -62,25 +66,37 @@ class GraphqlResponses:
     }
 
     def get_response(self, query: str) -> dict:  # noqa: PLR0911
-        if self.is_unauthenticated:
-            return self.unauthenticated
-        if self.all_error:
+        try:
+            if self.is_unauthenticated:
+                return self.unauthenticated
+            if self.all_error:
+                return self.error
+            match query:
+                case "ApiVersion":
+                    return self.api_version
+                case "ServerInfo":
+                    return self.server_info
+                case "MetricsArray":
+                    return self.metrics_array
+                case "Shares":
+                    return self.shares
+                case "Disks":
+                    return self.disks
+                case "UpsDevices":
+                    return self.ups
+                case _:
+                    return self.not_found
+        except ArithmeticError:
             return self.error
+
+    def get_subscription(self, query: str, index: int = 0) -> dict:
         match query:
-            case "ApiVersion":
-                return self.api_version
-            case "ServerInfo":
-                return self.server_info
-            case "Metrics":
-                return self.metrics
-            case "Shares":
-                return self.shares
-            case "Disks":
-                return self.disks
-            case "Array":
-                return self.array
-            case _:
-                return self.not_found
+            case "CpuUsage":
+                return self.cpu_percent_total[index]
+            case "CpuMetrics":
+                return self.cpu_metrics[index]
+            case "Memory":
+                return self.memory[index]
 
 
 class GraphqlResponses420(GraphqlResponses):
@@ -96,7 +112,7 @@ class GraphqlResponses420(GraphqlResponses):
                 "info": {"versions": {"core": {"unraid": "7.0.1"}}},
             }
         }
-        self.metrics = {
+        self.metrics_array = {
             "data": {
                 "metrics": {
                     "memory": {
@@ -107,7 +123,25 @@ class GraphqlResponses420(GraphqlResponses):
                         "available": 3900596224,
                     },
                     "cpu": {"percentTotal": 5.1},
-                }
+                },
+                "array": {
+                    "state": "STARTED",
+                    "capacity": {
+                        "kilobytes": {
+                            "free": "523094720",
+                            "used": "11474981430",
+                            "total": "11998076150",
+                        }
+                    },
+                    "parityCheckStatus": {
+                        "date": "2025-09-27T22:00:01.000Z",
+                        "duration": 5982,
+                        "speed": "10",
+                        "status": "COMPLETED",
+                        "errors": None,
+                        "progress": 0,
+                    },
+                },
             }
         }
 
@@ -178,8 +212,57 @@ class GraphqlResponses420(GraphqlResponses):
                 }
             }
         }
-        self.array = {
+
+        ## Subscription
+        self.cpu_percent_total = [
+            {"systemMetricsCpu": {"percentTotal": 5.1}},
+            {"systemMetricsCpu": {"percentTotal": 7.5}},
+        ]
+        self.memory = [
+            {
+                "systemMetricsMemory": {
+                    "free": 248168448,
+                    "total": 16644698112,
+                    "percentTotal": 70.72346589159935,
+                    "active": 11771707392,
+                    "available": 4872990720,
+                }
+            },
+            {
+                "systemMetricsMemory": {
+                    "free": 242290688,
+                    "total": 16644698112,
+                    "percentTotal": 71.88141588085776,
+                    "active": 11964444672,
+                    "available": 4680253440,
+                }
+            },
+        ]
+
+
+class GraphqlResponses426(GraphqlResponses420):
+    """Graphql Responses for version 4.26."""
+
+    version = AwesomeVersion("4.26.0")
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        ## Queries
+        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.26.0"}}}}}
+        self.metrics_array = {
             "data": {
+                "metrics": {
+                    "memory": {
+                        "free": 415510528,
+                        "total": 16646950912,
+                        "active": 12746354688,
+                        "percentTotal": 76.56870471583932,
+                        "available": 3900596224,
+                    },
+                    "cpu": {"percentTotal": 5.1},
+                },
+                "info": {"cpu": {"packages": {"power": [2.8], "temp": [31]}}},
                 "array": {
                     "state": "STARTED",
                     "capacity": {
@@ -197,18 +280,33 @@ class GraphqlResponses420(GraphqlResponses):
                         "errors": None,
                         "progress": 0,
                     },
-                }
+                },
             }
         }
-        self.not_found = {
-            "errors": [
-                {
-                    "message": "Cannot query field",
-                    "locations": [{"line": 3, "column": 5}],
-                    "extensions": {"code": "GRAPHQL_VALIDATION_FAILED"},
-                }
-            ]
+        self.ups = {
+            "data": {
+                "upsDevices": [
+                    {
+                        "battery": {"chargeLevel": 100, "estimatedRuntime": 25, "health": "Good"},
+                        "power": {
+                            "loadPercentage": 20,
+                            "outputVoltage": 120.5,
+                            "inputVoltage": 232,
+                        },
+                        "model": "Back-UPS ES 650G2",
+                        "name": "Back-UPS ES 650G2",
+                        "status": "ONLINE",
+                        "id": "Back-UPS ES 650G2",
+                    }
+                ]
+            }
         }
+
+        ## Subscription
+        self.cpu_metrics = [
+            {"systemMetricsCpuTelemetry": {"temp": [31], "power": [2.8]}},
+            {"systemMetricsCpuTelemetry": {"temp": [35], "power": [3.5]}},
+        ]
 
 
 class GraphqlResponses410(GraphqlResponses420):
@@ -217,9 +315,9 @@ class GraphqlResponses410(GraphqlResponses420):
     version = AwesomeVersion("4.10.0")
 
     def __init__(self) -> None:
-        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.10"}}}}}
+        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.10.0"}}}}}
 
 
-API_RESPONSES = [GraphqlResponses420]
+API_RESPONSES = [GraphqlResponses420, GraphqlResponses426]
 
 API_RESPONSES_LATEST = API_RESPONSES[-1]
