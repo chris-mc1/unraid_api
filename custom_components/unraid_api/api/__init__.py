@@ -7,7 +7,7 @@ import contextlib
 import json
 import logging
 from abc import abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class GraphQLWebsocketMessageType(str, Enum):
+class GraphQLWebsocketMessageType(StrEnum):
     """GraphQL WebSocket message Types."""
 
     CONNECTION_INIT = "connection_init"
