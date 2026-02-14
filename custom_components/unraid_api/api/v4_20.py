@@ -5,14 +5,17 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
+import yarl
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
 from custom_components.unraid_api.models import (
     ArrayState,
+    ContainerState,
     Disk,
     DiskStatus,
     DiskType,
+    DockerContainer,
     MemorySubscription,
     MetricsArray,
     ParityCheckStatus,
@@ -20,7 +23,7 @@ from custom_components.unraid_api.models import (
     Share,
 )
 
-from . import UnraidApiClient
+from . import _LOGGER, UnraidApiClient, _to_bool
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -127,6 +130,48 @@ class UnraidApiV420(UnraidApiClient):
             ]
         )
         return disks
+
+    async def query_docker(self) -> list[DockerContainer]:
+        response = await self.call_api(DOCKER_QUERY, DockerQuery)
+        containers = []
+        for container in response.docker.containers:
+            label_unraid_webui = container.labels.get("net.unraid.docker.webui", "")
+            if label_unraid_webui == "":
+                webui = None
+            else:
+                url = (
+                    label_unraid_webui
+                    if "://" in label_unraid_webui
+                    else f"http://{label_unraid_webui}"
+                )
+                try:
+                    webui = yarl.URL(url)
+                except (ValueError, TypeError):
+                    _LOGGER.debug("Can't build webui url: %s", label_unraid_webui)
+
+            label_name = container.labels.get("io.home-assistant.unraid_api.name")
+            name = label_name or None
+
+            containers.append(
+                DockerContainer(
+                    id=container.id,
+                    name=container.names[0].lstrip("/"),
+                    state=container.state,
+                    image=container.image,
+                    image_sha256=container.image_sha265.removeprefix("sha256:"),
+                    status=container.status,
+                    label_opencontainers_version=container.labels.get(
+                        "org.opencontainers.image.version"
+                    ),
+                    label_unraid_webui=webui,
+                    label_monitor=_to_bool(
+                        container.labels.get("io.home-assistant.unraid_api.monitor")
+                    ),
+                    label_name=name,
+                )
+            )
+
+        return containers
 
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         def _callback(data: Any) -> None:
@@ -266,6 +311,21 @@ query Disks {
       type
       id
       isSpinning
+    }
+  }
+}
+"""
+DOCKER_QUERY = """
+query DockerContainers {
+  docker {
+    containers {
+      labels
+      names
+      id
+      image
+      imageId
+      state
+      status
     }
   }
 }
@@ -438,6 +498,25 @@ class FSDisk(ParityDisk):  # noqa: D101
     fs_size: int | None = Field(alias="fsSize")
     fs_free: int | None = Field(alias="fsFree")
     fs_used: int | None = Field(alias="fsUsed")
+
+
+### Docker
+class DockerQuery(BaseModel):  # noqa: D101
+    docker: Docker
+
+
+class Docker(BaseModel):  # noqa: D101
+    containers: list[_DockerContainer]
+
+
+class _DockerContainer(BaseModel):
+    id: str
+    names: list[str]
+    state: ContainerState
+    labels: dict[str, str]
+    image: str
+    image_sha265: str = Field(alias="imageId")
+    status: str
 
 
 ### CpuMetrics

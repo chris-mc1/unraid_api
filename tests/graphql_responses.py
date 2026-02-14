@@ -17,6 +17,7 @@ class GraphqlResponses:
     shares: ClassVar[dict]
     disks: ClassVar[dict]
     ups: ClassVar[dict]
+    docker_containers: ClassVar[dict]
 
     cpu_percent_total: ClassVar[list[dict]]
     cpu_metrics: ClassVar[list[dict]]
@@ -84,6 +85,8 @@ class GraphqlResponses:
                     return self.disks
                 case "UpsDevices":
                     return self.ups
+                case "DockerContainers":
+                    return self.docker_containers
                 case _:
                     return self.not_found
         except ArithmeticError:
@@ -209,6 +212,69 @@ class GraphqlResponses420(GraphqlResponses):
                             "isSpinning": True,
                         }
                     ],
+                }
+            }
+        }
+        self.docker_containers = {
+            "data": {
+                "docker": {
+                    "containers": [
+                        {
+                            "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:9591842fdb0e817f385407d6eb71d0070bcdfd3008506d5e7e53c3036939c2b0",  # noqa: E501
+                            "names": ["/homeassistant"],
+                            "state": "RUNNING",
+                            "labels": {
+                                "org.opencontainers.image.authors": "The Home Assistant Authors",
+                                "org.opencontainers.image.created": "2026-02-13 20:09:43+00:00",
+                                "org.opencontainers.image.description": "Open-source home automation platform running on Python 3",  # noqa: E501
+                                "org.opencontainers.image.documentation": "https://www.home-assistant.io/docs/",
+                                "org.opencontainers.image.licenses": "Apache-2.0",
+                                "org.opencontainers.image.source": "https://github.com/home-assistant/core",
+                                "org.opencontainers.image.title": "Home Assistant",
+                                "org.opencontainers.image.url": "https://www.home-assistant.io/",
+                                "org.opencontainers.image.version": "2026.2.2",
+                                "net.unraid.docker.icon": "",
+                                "net.unraid.docker.managed": "composeman",
+                                "net.unraid.docker.shell": "",
+                                "net.unraid.docker.webui": "homeassistant.unraid.lan",
+                            },
+                            "image": "ghcr.io/home-assistant/home-assistant:stable",
+                            "imageId": "sha256:e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d",  # noqa: E501
+                            "status": "Up 28 minutes",
+                        },
+                        {
+                            "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:db6215c5578bd28bc78fab45e16b7a2d6d94ec3bb3b23a5ad5b8b4979e79bf86",  # noqa: E501
+                            "names": ["/postgres"],
+                            "state": "RUNNING",
+                            "labels": {
+                                "net.unraid.docker.icon": "",
+                                "net.unraid.docker.managed": "composeman",
+                                "net.unraid.docker.shell": "",
+                                "net.unraid.docker.webui": "",
+                                "io.home-assistant.unraid_api.name": "Postgres",
+                                "io.home-assistant.unraid_api.monitor": "false",
+                            },
+                            "image": "postgres:15",
+                            "imageId": "sha256:a748a13f04094ee02b167d3e2a919368bc5e93cbd2b1c41a6d921dbaa59851ac",  # noqa: E501
+                            "status": "Up 28 minutes",
+                        },
+                        {
+                            "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369",  # noqa: E501
+                            "names": ["/grafana"],
+                            "state": "RUNNING",
+                            "labels": {
+                                "net.unraid.docker.icon": "",
+                                "net.unraid.docker.managed": "composeman",
+                                "net.unraid.docker.shell": "",
+                                "net.unraid.docker.webui": "",
+                                "io.home-assistant.unraid_api.name": "Grafana Public",
+                                "io.home-assistant.unraid_api.monitor": "true",
+                            },
+                            "image": "grafana/grafana-enterprise",
+                            "imageId": "sha256:32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5",  # noqa: E501
+                            "status": "Up 28 minutes",
+                        },
+                    ]
                 }
             }
         }
