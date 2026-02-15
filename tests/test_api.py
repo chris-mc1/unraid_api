@@ -205,6 +205,7 @@ async def test_docker(
     api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
+    """Test querying docker."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
     api_client = await get_api_client(
@@ -276,7 +277,7 @@ async def test_start_stop_container(
     api_responses: GraphqlResponses,
     mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
 ) -> None:
-
+    """Test docker mutations."""
     mocker = await mock_graphql_server(api_responses)
     session = mocker.create_session()
     api_client = await get_api_client(

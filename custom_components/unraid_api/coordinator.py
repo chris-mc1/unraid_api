@@ -332,3 +332,15 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 callback(*args, **kwargs)
             except Exception:
                 _LOGGER.exception("Error in callback")
+
+    async def start_container(self, container_name: str) -> None:
+        container = self.data["docker_containers"][container_name]
+        updated_container = await self.api_client.start_container(container.id)
+        self.data["docker_containers"][container_name] = updated_container
+        self.async_update_listeners()
+
+    async def stop_container(self, container_name: str) -> None:
+        container = self.data["docker_containers"][container_name]
+        updated_container = await self.api_client.stop_container(container.id)
+        self.data["docker_containers"][container_name] = updated_container
+        self.async_update_listeners()

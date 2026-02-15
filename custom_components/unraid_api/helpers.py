@@ -19,9 +19,9 @@ from . import _LOGGER
 def error_handler[T](func: Callable[[], T]) -> Callable:
     """Handle API errors and raise HomeAssistantError."""
 
-    def decorated(*args: tuple[Any], **kwargs: dict[str, Any]) -> T:
+    async def decorated(*args: tuple[Any], **kwargs: dict[str, Any]) -> T:
         try:
-            func(*args, **kwargs)
+            return await func(*args, **kwargs)
         except ClientConnectorSSLError as exc:
             _LOGGER.debug("Button: SSL error: %s", str(exc))
             raise HomeAssistantError(

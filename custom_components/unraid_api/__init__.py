@@ -126,7 +126,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: UnraidConfigEnt
 
     if config_entry.version == 1:
         new_options = config_entry.options.copy()
-        if config_entry.minor_version < 2:
+        if config_entry.minor_version < 2:  # noqa: PLR2004
             new_options[CONF_DOCKER_MODE] = DOCKER_MODE_OFF
 
         hass.config_entries.async_update_entry(

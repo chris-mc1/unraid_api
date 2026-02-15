@@ -395,7 +395,7 @@ async def async_setup_entry(
 
     @callback
     def add_disk_callback(disk: Disk) -> None:
-        _LOGGER.debug("Adding new Disk: %s", disk.name)
+        _LOGGER.debug("Sensor: Adding new Disk: %s", disk.name)
         entities = [
             UnraidDiskSensor(description, config_entry, disk.id)
             for description in DISK_SENSOR_DESCRIPTIONS
@@ -412,7 +412,7 @@ async def async_setup_entry(
 
     @callback
     def add_share_callback(share: Share) -> None:
-        _LOGGER.debug("Adding new Share: %s", share.name)
+        _LOGGER.debug("Sensor: Adding new Share: %s", share.name)
         entities = [
             UnraidShareSensor(description, config_entry, share.name)
             for description in SHARE_SENSOR_DESCRIPTIONS
@@ -422,7 +422,7 @@ async def async_setup_entry(
 
     @callback
     def add_ups_callback(device: UpsDevice) -> None:
-        _LOGGER.debug("Adding new UPS: %s", device.name)
+        _LOGGER.debug("Sensor: Adding new UPS: %s", device.name)
         device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{device.id}")},
             name=device.name,
@@ -442,7 +442,7 @@ async def async_setup_entry(
         *,
         remove: bool = False,  # noqa: ARG001
     ) -> None:
-        _LOGGER.debug("Adding new Docker container: %s", container_name)
+        _LOGGER.debug("Sensor: Adding new Docker container: %s", container_name)
         entities = [
             UnraidDockerSensor(description, config_entry, container_name)
             for description in DOCKER_SENSOR_DESCRIPTIONS

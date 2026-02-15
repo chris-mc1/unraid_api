@@ -207,6 +207,9 @@ class MockApiClient:
     def __init__(self, state: type[ApiState]) -> None:
         self.state = state()
 
+        self.start_container = AsyncMock(return_value=self.state.docker[2])
+        self.stop_container = AsyncMock(return_value=self.state.docker[0])
+
     @property
     def version(self) -> AwesomeVersion:
         return self.state.version
@@ -245,6 +248,12 @@ class MockApiClient:
 
     async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
         self.memory_callback = callback
+
+    async def start_container(self, container_id: str) -> DockerContainer:
+        pass
+
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        pass
 
 
 @pytest.fixture

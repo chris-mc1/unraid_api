@@ -387,9 +387,9 @@ mutation ParityCheck {
 """
 
 DOCKER_START = """
-mutation DockerStart($stopId: PrefixedID!) {
+mutation DockerStart($startId: PrefixedID!) {
   docker {
-    stop(id: $stopId) {
+    start(id: $startId) {
       state
       names
       labels
