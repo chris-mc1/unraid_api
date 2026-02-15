@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -14,6 +13,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import _LOGGER
 from .const import CONF_DRIVES
 from .coordinator import UnraidDataUpdateCoordinator
 
@@ -26,9 +26,6 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .models import Disk
-
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class UnraidDiskBinarySensorEntityDescription(BinarySensorEntityDescription, frozen_or_thawed=True):

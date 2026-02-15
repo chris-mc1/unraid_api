@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -25,6 +24,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
+from . import _LOGGER
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from .entity import UnraidBaseEntity, UnraidEntityDescription
 from .models import Disk, DiskType, DockerContainer, Share, UpsDevice
@@ -38,8 +38,6 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .coordinator import UnraidDataUpdateCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class UnraidSensorEntityDescription(
@@ -440,7 +438,10 @@ async def async_setup_entry(
 
     @callback
     def add_container_callback(
-        container: DockerContainer, container_name: str, *, remove: bool = False
+        container: DockerContainer,
+        container_name: str,
+        *,
+        remove: bool = False,  # noqa: ARG001
     ) -> None:
         _LOGGER.debug("Adding new Docker container: %s", container_name)
         device_info = DeviceInfo(
