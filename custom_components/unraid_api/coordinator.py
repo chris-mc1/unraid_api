@@ -12,7 +12,16 @@ from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .const import (
+    CONF_DOCKER_MODE,
+    CONF_DRIVES,
+    CONF_SHARES,
+    DOCKER_MODE_ALL,
+    DOCKER_MODE_ENABLED_ONLY,
+    DOCKER_MODE_EXCEPT_DISABLED,
+    DOCKER_MODE_OFF,
+    DOMAIN,
+)
 from .exceptions import (
     GraphQLError,
     GraphQLMultiError,
@@ -21,7 +30,7 @@ from .exceptions import (
     UnraidApiError,
     UnraidApiInvalidResponseError,
 )
-from .models import CpuMetricsSubscription, MemorySubscription, MetricsArray
+from .models import CpuMetricsSubscription, DockerContainer, MemorySubscription, MetricsArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,6 +49,7 @@ class UnraidServerData(TypedDict):  # noqa: D101
     disks: dict[str, Disk]
     shares: dict[str, Share]
     ups_devices: dict[str, UpsDevice]
+    docker_containers: dict[str, DockerContainer]
     cpu_metrics: CpuMetricsSubscription
     cpu_usage: float
     memory: MemorySubscription
@@ -68,11 +78,13 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.disk_callbacks: set[Callable[[Disk], None]] = set()
         self.share_callbacks: set[Callable[[Share], None]] = set()
         self.ups_callbacks: set[Callable[[UpsDevice], None]] = set()
+        self.docker_callbacks: set[Callable[[DockerContainer], None]] = set()
 
     async def _async_setup(self) -> None:
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
         self.known_ups_devices: set[str] = set()
+        self.known_containers: set[str] = set()
         self.data = UnraidServerData()
 
         await self._connect_websocket()
@@ -116,6 +128,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                     tg.create_task(self._update_shares())
                 if self.api_client.version >= AwesomeVersion("4.26.0"):
                     tg.create_task(self._update_ups())
+                if not self.config_entry.options[CONF_DOCKER_MODE] in DOCKER_MODE_OFF:
+                    tg.create_task(self._update_docker())
 
         except* ClientConnectorSSLError as exc:
             _LOGGER.debug("Update: SSL error: %s", str(exc))
@@ -225,10 +239,45 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 if device.id not in self.known_ups_devices:
                     self.known_ups_devices.add(device.id)
                     self._do_callback(self.ups_callbacks, device)
-        except UnraidApiError:
-            pass
+        except UnraidApiError as exc:
+            _LOGGER.debug("UPS Update: %S", str(exc), exc_info=True)
 
         self.data["ups_devices"] = devices
+
+    async def _update_docker(self) -> None:
+        containers = {}
+        query_response = await self.api_client.query_docker()
+
+        for container in query_response:
+            if (
+                self.config_entry.options[CONF_DOCKER_MODE] == DOCKER_MODE_ENABLED_ONLY
+                and not container.label_monitor
+            ):
+                continue
+            if (
+                self.config_entry.options[CONF_DOCKER_MODE] == DOCKER_MODE_EXCEPT_DISABLED
+                and container.label_monitor is False
+            ):
+                continue
+
+            container_name = container.label_name or container.name
+            if container_name in containers:
+                _LOGGER.warning("Duplicate container name %s", container_name)
+                continue
+            containers[container_name] = container
+
+        self.data["docker_containers"] = containers
+        found_containers = set(containers.keys())
+        new_containers = found_containers - self.known_containers
+        removed_containers = self.known_containers - found_containers
+
+        for container_name in new_containers:
+            self._do_callback(self.docker_callbacks, containers[container_name])
+
+        for container_name in removed_containers:
+            self._do_callback(self.docker_callbacks, containers[container_name], removed=True)
+
+        self.known_containers = found_containers
 
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
@@ -244,6 +293,13 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.ups_callbacks.add(callback)
         for ups_id in self.known_ups_devices:
             self._do_callback([callback], self.data["ups_devices"][ups_id])
+
+    def subscribe_docker(self, callback: Callable[[DockerContainer, str, bool], None]) -> None:
+        self.docker_callbacks.add(callback)
+        for container_name in self.known_containers:
+            self._do_callback(
+                [callback], self.data["docker_containers"][container_name], container_name
+            )
 
     def _cpu_metrics_callback(self, data: CpuMetricsSubscription) -> None:
         self.data["cpu_metrics"] = data

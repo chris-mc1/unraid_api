@@ -157,6 +157,9 @@
             },
             "ups_output_voltage": {
                 "name": "Output voltage"
+            },
+            "docker_state": {
+                "name": "State"
             }
         },
         "binary_sensor": {

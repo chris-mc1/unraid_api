@@ -232,6 +232,7 @@ async def test_docker(
     assert docker_containers[0].label_unraid_webui == yarl.URL("http://homeassistant.unraid.lan")
     assert docker_containers[0].label_monitor is None
     assert docker_containers[0].label_name is None
+
     ## Postgres
 
     assert (

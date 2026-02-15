@@ -23,11 +23,11 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
 from .entity import UnraidBaseEntity, UnraidEntityDescription
-from .models import Disk, DiskType, Share, UpsDevice
+from .models import Disk, DiskType, DockerContainer, Share, UpsDevice
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -76,6 +76,15 @@ class UnraidUpsSensorEntityDescription(
 
     min_version: AwesomeVersion = AwesomeVersion("4.26.0")
     value_fn: Callable[[UpsDevice], StateType]
+
+
+class UnraidDockerSensorEntityDescription(
+    UnraidEntityDescription, SensorEntityDescription, frozen_or_thawed=True
+):
+    """Description for Unraid Docker Sensor Entity."""
+
+    value_fn: Callable[[DockerContainer], StateType]
+    extra_values_fn: Callable[[DockerContainer], dict[str, Any]] | None = None
 
 
 def calc_array_usage_percentage(coordinator: UnraidDataUpdateCoordinator) -> StateType:
@@ -241,46 +250,6 @@ SENSOR_DESCRIPTIONS: tuple[UnraidSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_progress,
     ),
-    UnraidSensorEntityDescription(
-        key="parity_check_status",
-        device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_status.lower(),
-        options=[
-            "never_run",
-            "running",
-            "paused",
-            "completed",
-            "cancelled",
-            "failed",
-        ],
-    ),
-    UnraidSensorEntityDescription(
-        key="parity_check_date",
-        device_class=SensorDeviceClass.DATE,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_date,
-    ),
-    UnraidSensorEntityDescription(
-        key="parity_check_duration",
-        device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        suggested_unit_of_measurement=UnitOfTime.HOURS,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_duration,
-    ),
-    UnraidSensorEntityDescription(
-        key="parity_check_speed",
-        device_class=SensorDeviceClass.DATA_RATE,
-        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_speed,
-    ),
-    UnraidSensorEntityDescription(
-        key="parity_check_errors",
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_errors,
-    ),
-    UnraidSensorEntityDescription(
-        key="parity_check_progress",
-        native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda coordinator: coordinator.data["metrics_array"].parity_check_progress,
-    ),
 )
 
 DISK_SENSOR_DESCRIPTIONS: tuple[UnraidDiskSensorEntityDescription, ...] = (
@@ -398,6 +367,19 @@ UPS_SENSOR_DESCRIPTIONS: tuple[UnraidUpsSensorEntityDescription, ...] = (
         value_fn=lambda device: device.output_voltage,
     ),
 )
+DOCKER_SENSOR_DESCRIPTIONS: tuple[UnraidDockerSensorEntityDescription, ...] = (
+    UnraidDockerSensorEntityDescription(
+        key="docker_state",
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda container: container.state.lower(),
+        options=["running", "exited"],
+        extra_values_fn=lambda container: {
+            "status": container.status,
+            "image": container.image,
+            "sha265": container.image_sha256,
+        },
+    ),
+)
 
 
 async def async_setup_entry(
@@ -456,11 +438,35 @@ async def async_setup_entry(
         ]
         async_add_entites(entities)
 
+    @callback
+    def add_container_callback(
+        container: DockerContainer, container_name: str, *, remove: bool = False
+    ) -> None:
+        _LOGGER.debug("Adding new Docker container: %s", container_name)
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{config_entry.entry_id}_docker_{container_name}")},
+            name=f"{config_entry.runtime_data.device_info['name']} {container_name}",
+            via_device=(DOMAIN, config_entry.entry_id),
+            entry_type=DeviceEntryType.SERVICE,
+        )
+        if container.label_unraid_webui:
+            device_info["configuration_url"] = container.label_unraid_webui
+        if container.label_opencontainers_version:
+            device_info["sw_version"] = container.label_opencontainers_version
+
+        entities = [
+            UnraidDockerSensor(description, config_entry, container_name, device_info)
+            for description in DOCKER_SENSOR_DESCRIPTIONS
+            if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
+        ]
+        async_add_entites(entities)
+
     if config_entry.options[CONF_DRIVES]:
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
     if config_entry.options[CONF_SHARES]:
         config_entry.runtime_data.coordinator.subscribe_shares(add_share_callback)
     config_entry.runtime_data.coordinator.subscribe_ups(add_ups_callback)
+    config_entry.runtime_data.coordinator.subscribe_docker(add_container_callback)
 
 
 class UnraidSensor(UnraidBaseEntity, SensorEntity):
@@ -590,5 +596,50 @@ class UnraidUpsSensor(UnraidBaseEntity, SensorEntity):
     def available(self) -> bool:
         return (
             self.ups_id in self.coordinator.data["ups_devices"]
+            and self.coordinator.last_update_success
+        )
+
+
+class UnraidDockerSensor(UnraidBaseEntity, SensorEntity):
+    """Sensor for Docker containers."""
+
+    entity_description: UnraidDockerSensorEntityDescription
+
+    def __init__(
+        self,
+        description: UnraidDockerSensorEntityDescription,
+        config_entry: UnraidConfigEntry,
+        container_name: str,
+        device_info: DeviceInfo,
+    ) -> None:
+        super().__init__(description, config_entry)
+        self.container_name = container_name
+        self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.container_name}"
+        self._attr_device_info = device_info
+
+    @property
+    def native_value(self) -> StateType:
+        try:
+            return self.entity_description.value_fn(
+                self.coordinator.data["docker_containers"][self.container_name]
+            )
+        except (KeyError, AttributeError):
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        try:
+            if self.entity_description.extra_values_fn:
+                return self.entity_description.extra_values_fn(
+                    self.coordinator.data["docker_containers"][self.container_name]
+                )
+        except (KeyError, AttributeError):
+            return None
+        return None
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.container_name in self.coordinator.data["docker_containers"]
             and self.coordinator.last_update_success
         )

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from custom_components.unraid_api.models import (
         CpuMetricsSubscription,
         Disk,
+        DockerContainer,
         MemorySubscription,
         MetricsArray,
         ServerInfo,
@@ -230,6 +231,9 @@ class MockApiClient:
 
     async def query_ups(self) -> list[UpsDevice]:
         return self.state.ups
+
+    async def query_docker(self) -> list[DockerContainer]:
+        return self.state.docker
 
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         self.cpu_usage_callback = callback
