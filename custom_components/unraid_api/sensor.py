@@ -22,7 +22,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from . import _LOGGER
 from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
@@ -438,25 +438,13 @@ async def async_setup_entry(
 
     @callback
     def add_container_callback(
-        container: DockerContainer,
         container_name: str,
         *,
         remove: bool = False,  # noqa: ARG001
     ) -> None:
         _LOGGER.debug("Adding new Docker container: %s", container_name)
-        device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{config_entry.entry_id}_docker_{container_name}")},
-            name=f"{config_entry.runtime_data.device_info['name']} {container_name}",
-            via_device=(DOMAIN, config_entry.entry_id),
-            entry_type=DeviceEntryType.SERVICE,
-        )
-        if container.label_unraid_webui:
-            device_info["configuration_url"] = container.label_unraid_webui
-        if container.label_opencontainers_version:
-            device_info["sw_version"] = container.label_opencontainers_version
-
         entities = [
-            UnraidDockerSensor(description, config_entry, container_name, device_info)
+            UnraidDockerSensor(description, config_entry, container_name)
             for description in DOCKER_SENSOR_DESCRIPTIONS
             if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
@@ -611,12 +599,11 @@ class UnraidDockerSensor(UnraidBaseEntity, SensorEntity):
         description: UnraidDockerSensorEntityDescription,
         config_entry: UnraidConfigEntry,
         container_name: str,
-        device_info: DeviceInfo,
     ) -> None:
         super().__init__(description, config_entry)
         self.container_name = container_name
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.container_name}"
-        self._attr_device_info = device_info
+        self._attr_device_info = config_entry.runtime_data.container_device_info[container_name]
 
     @property
     def native_value(self) -> StateType:

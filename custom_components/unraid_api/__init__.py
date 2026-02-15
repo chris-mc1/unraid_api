@@ -35,6 +35,7 @@ class UnraidData:
 
     coordinator: UnraidDataUpdateCoordinator
     device_info: DeviceInfo
+    container_device_info: dict[str, DeviceInfo]
 
 
 type UnraidConfigEntry = ConfigEntry[UnraidData]
@@ -97,12 +98,8 @@ async def async_setup_entry(
         configuration_url=server_info.localurl,
     )
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
+    config_entry.runtime_data = UnraidData(coordinator, device_info, {})
     await coordinator.async_config_entry_first_refresh()
-
-    config_entry.runtime_data = UnraidData(
-        coordinator,
-        device_info,
-    )
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     return True

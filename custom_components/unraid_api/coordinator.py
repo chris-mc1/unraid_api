@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     CONF_DOCKER_MODE,
     CONF_DRIVES,
     CONF_SHARES,
-    DOCKER_MODE_ALL,
     DOCKER_MODE_ENABLED_ONLY,
     DOCKER_MODE_EXCEPT_DISABLED,
     DOCKER_MODE_OFF,
@@ -128,7 +128,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                     tg.create_task(self._update_shares())
                 if self.api_client.version >= AwesomeVersion("4.26.0"):
                     tg.create_task(self._update_ups())
-                if not self.config_entry.options[CONF_DOCKER_MODE] in DOCKER_MODE_OFF:
+                if self.config_entry.options[CONF_DOCKER_MODE] not in DOCKER_MODE_OFF:
                     tg.create_task(self._update_docker())
 
         except* ClientConnectorSSLError as exc:
@@ -245,7 +245,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.data["ups_devices"] = devices
 
     async def _update_docker(self) -> None:
-        containers = {}
+        containers: dict[str, DockerContainer] = {}
         query_response = await self.api_client.query_docker()
 
         for container in query_response:
@@ -272,6 +272,19 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         removed_containers = self.known_containers - found_containers
 
         for container_name in new_containers:
+            container = containers[container_name]
+            device_info = DeviceInfo(
+                identifiers={(DOMAIN, f"{self.config_entry.entry_id}_docker_{container_name}")},
+                name=f"{self.config_entry.runtime_data.device_info['name']} {container_name}",
+                via_device=(DOMAIN, self.config_entry.entry_id),
+                entry_type=DeviceEntryType.SERVICE,
+            )
+            if container.label_unraid_webui:
+                device_info["configuration_url"] = container.label_unraid_webui
+            if container.label_opencontainers_version:
+                device_info["sw_version"] = container.label_opencontainers_version
+            self.config_entry.runtime_data.container_device_info[container_name] = device_info
+
             self._do_callback(self.docker_callbacks, containers[container_name])
 
         for container_name in removed_containers:
@@ -294,12 +307,10 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         for ups_id in self.known_ups_devices:
             self._do_callback([callback], self.data["ups_devices"][ups_id])
 
-    def subscribe_docker(self, callback: Callable[[DockerContainer, str, bool], None]) -> None:
+    def subscribe_docker(self, callback: Callable[[str, bool], None]) -> None:
         self.docker_callbacks.add(callback)
         for container_name in self.known_containers:
-            self._do_callback(
-                [callback], self.data["docker_containers"][container_name], container_name
-            )
+            self._do_callback([callback], container_name)
 
     def _cpu_metrics_callback(self, data: CpuMetricsSubscription) -> None:
         self.data["cpu_metrics"] = data
