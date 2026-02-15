@@ -341,6 +341,14 @@ class UnraidApiClient(UnraidApiClientBase):
     async def resume_parity_check(self) -> None:
         pass
 
+    @abstractmethod
+    async def start_container(self, container_id: str) -> DockerContainer:
+        pass
+
+    @abstractmethod
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        pass
+
 
 ## Queries
 

@@ -29,6 +29,34 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def _make_container_obj(container: _DockerContainer) -> DockerContainer:
+    label_unraid_webui = container.labels.get("net.unraid.docker.webui", "")
+    if label_unraid_webui == "":
+        webui = None
+    else:
+        url = label_unraid_webui if "://" in label_unraid_webui else f"http://{label_unraid_webui}"
+        try:
+            webui = yarl.URL(url)
+        except (ValueError, TypeError):
+            _LOGGER.debug("Can't build webui url: %s", label_unraid_webui)
+
+    label_name = container.labels.get("io.home-assistant.unraid_api.name")
+    name = label_name or None
+
+    return DockerContainer(
+        id=container.id,
+        name=container.names[0].lstrip("/"),
+        state=container.state,
+        image=container.image,
+        image_sha256=container.image_sha265.removeprefix("sha256:"),
+        status=container.status,
+        label_opencontainers_version=container.labels.get("org.opencontainers.image.version"),
+        label_unraid_webui=webui,
+        label_monitor=_to_bool(container.labels.get("io.home-assistant.unraid_api.monitor")),
+        label_name=name,
+    )
+
+
 class UnraidApiV420(UnraidApiClient):
     """
     Unraid GraphQL API Client.
@@ -133,45 +161,7 @@ class UnraidApiV420(UnraidApiClient):
 
     async def query_docker(self) -> list[DockerContainer]:
         response = await self.call_api(DOCKER_QUERY, DockerQuery)
-        containers = []
-        for container in response.docker.containers:
-            label_unraid_webui = container.labels.get("net.unraid.docker.webui", "")
-            if label_unraid_webui == "":
-                webui = None
-            else:
-                url = (
-                    label_unraid_webui
-                    if "://" in label_unraid_webui
-                    else f"http://{label_unraid_webui}"
-                )
-                try:
-                    webui = yarl.URL(url)
-                except (ValueError, TypeError):
-                    _LOGGER.debug("Can't build webui url: %s", label_unraid_webui)
-
-            label_name = container.labels.get("io.home-assistant.unraid_api.name")
-            name = label_name or None
-
-            containers.append(
-                DockerContainer(
-                    id=container.id,
-                    name=container.names[0].lstrip("/"),
-                    state=container.state,
-                    image=container.image,
-                    image_sha256=container.image_sha265.removeprefix("sha256:"),
-                    status=container.status,
-                    label_opencontainers_version=container.labels.get(
-                        "org.opencontainers.image.version"
-                    ),
-                    label_unraid_webui=webui,
-                    label_monitor=_to_bool(
-                        container.labels.get("io.home-assistant.unraid_api.monitor")
-                    ),
-                    label_name=name,
-                )
-            )
-
-        return containers
+        return [_make_container_obj(container) for container in response.docker.containers]
 
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         def _callback(data: Any) -> None:
@@ -210,6 +200,14 @@ class UnraidApiV420(UnraidApiClient):
 
     async def resume_parity_check(self) -> None:
         await self.call_api(PARITY_CHECK_RESUME, None)
+
+    async def start_container(self, container_id: str) -> DockerContainer:
+        model = await self.call_api(DOCKER_START, DockerStart, {"startId": container_id})
+        return _make_container_obj(model.docker.start)
+
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        model = await self.call_api(DOCKER_STOP, DockerStop, {"stopId": container_id})
+        return _make_container_obj(model.docker.stop)
 
 
 ## Queries
@@ -354,6 +352,8 @@ subscription Memory {
 
 """
 
+
+## Mutations
 PARITY_CHECK_START = """
 mutation ParityCheck {
   parityCheck {
@@ -382,6 +382,38 @@ PARITY_CHECK_RESUME = """
 mutation ParityCheck {
   parityCheck {
     resume
+  }
+}
+"""
+
+DOCKER_START = """
+mutation DockerStart($stopId: PrefixedID!) {
+  docker {
+    stop(id: $stopId) {
+      state
+      names
+      labels
+      id
+      image
+      imageId
+      status
+    }
+  }
+}
+"""
+
+DOCKER_STOP = """
+mutation DockerStop($stopId: PrefixedID!) {
+  docker {
+    stop(id: $stopId) {
+      state
+      names
+      labels
+      id
+      image
+      imageId
+      status
+    }
   }
 }
 """
@@ -517,6 +549,22 @@ class _DockerContainer(BaseModel):
     image: str
     image_sha265: str = Field(alias="imageId")
     status: str
+
+
+class DockerStart(BaseModel):  # noqa: D101
+    docker: _DockerStart
+
+
+class _DockerStart(BaseModel):
+    start: _DockerContainer
+
+
+class DockerStop(BaseModel):  # noqa: D101
+    docker: _DockerStop
+
+
+class _DockerStop(BaseModel):
+    stop: _DockerContainer
 
 
 ### CpuMetrics

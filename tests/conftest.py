@@ -84,7 +84,7 @@ class GraphqlServerMocker:
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
         query: str = body["query"]
-        query = query.split(" ")[1]
+        query = query.split(" ")[1].split("(")[0]
         response = self.responses.get_response(query)
         return web.json_response(data=response)
 

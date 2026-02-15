@@ -437,7 +437,7 @@ async def test_docker_sensors_monitor_all(
 
     # grafana
     state = hass.states.get("sensor.test_server_grafana_public_state")
-    assert state.state == "running"
+    assert state.state == "exited"
     assert state.attributes["image"] == "grafana/grafana-enterprise"
     assert (
         state.attributes["sha265"]

@@ -23,6 +23,9 @@ class GraphqlResponses:
     cpu_metrics: ClassVar[list[dict]]
     memory: ClassVar[list[dict]]
 
+    start_container: ClassVar[dict]
+    stop_container: ClassVar[dict]
+
     is_unauthenticated = False
     unauthenticated: ClassVar[dict] = {
         "errors": [
@@ -66,7 +69,7 @@ class GraphqlResponses:
         ]
     }
 
-    def get_response(self, query: str) -> dict:  # noqa: PLR0911
+    def get_response(self, query: str) -> dict:  # noqa: PLR0911, PLR0912
         try:
             if self.is_unauthenticated:
                 return self.unauthenticated
@@ -87,6 +90,10 @@ class GraphqlResponses:
                     return self.ups
                 case "DockerContainers":
                     return self.docker_containers
+                case "DockerStart":
+                    return self.start_container
+                case "DockerStop":
+                    return self.stop_container
                 case _:
                     return self.not_found
         except ArithmeticError:
@@ -261,7 +268,7 @@ class GraphqlResponses420(GraphqlResponses):
                         {
                             "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369",  # noqa: E501
                             "names": ["/grafana"],
-                            "state": "RUNNING",
+                            "state": "EXITED",
                             "labels": {
                                 "net.unraid.docker.icon": "",
                                 "net.unraid.docker.managed": "composeman",
@@ -304,6 +311,38 @@ class GraphqlResponses420(GraphqlResponses):
                 }
             },
         ]
+
+        ## Mutations
+        self.start_container = {
+            "data": {
+                "docker": {
+                    "start": {
+                        "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369",  # noqa: E501
+                        "names": ["/grafana"],
+                        "state": "RUNNING",
+                        "labels": {},
+                        "image": "grafana/grafana-enterprise",
+                        "imageId": "sha256:32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5",  # noqa: E501
+                        "status": "Up 28 minutes",
+                    }
+                }
+            }
+        }
+        self.stop_container = {
+            "data": {
+                "docker": {
+                    "stop": {
+                        "id": "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:9591842fdb0e817f385407d6eb71d0070bcdfd3008506d5e7e53c3036939c2b0",  # noqa: E501
+                        "names": ["/homeassistant"],
+                        "state": "EXITED",
+                        "labels": {},
+                        "image": "ghcr.io/home-assistant/home-assistant:stable",
+                        "imageId": "sha256:e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d",  # noqa: E501
+                        "status": "Up 28 minutes",
+                    }
+                }
+            }
+        }
 
 
 class GraphqlResponses426(GraphqlResponses420):
@@ -373,6 +412,17 @@ class GraphqlResponses426(GraphqlResponses420):
             {"systemMetricsCpuTelemetry": {"temp": [31], "power": [2.8]}},
             {"systemMetricsCpuTelemetry": {"temp": [35], "power": [3.5]}},
         ]
+
+
+class GraphqlResponses429(GraphqlResponses426):
+    """Graphql Responses for version 4.29."""
+
+    version = AwesomeVersion("4.29.0")
+
+    def __init__(self) -> None:
+        super().__init__()
+        ## Queries
+        self.api_version = {"data": {"info": {"versions": {"core": {"api": "4.29.0"}}}}}
 
 
 class GraphqlResponses410(GraphqlResponses420):

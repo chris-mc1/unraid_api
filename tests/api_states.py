@@ -151,7 +151,7 @@ class ApiState420(ApiState):
             DockerContainer(
                 id="4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369",
                 name="grafana",
-                state=ContainerState.RUNNING,
+                state=ContainerState.EXITED,
                 image="grafana/grafana-enterprise",
                 image_sha256="32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5",
                 status="Up 28 minutes",

@@ -258,7 +258,7 @@ async def test_docker(
         == "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369"  # noqa: E501
     )
     assert docker_containers[2].name == "grafana"
-    assert docker_containers[2].state == ContainerState.RUNNING
+    assert docker_containers[2].state == ContainerState.EXITED
     assert docker_containers[2].image == "grafana/grafana-enterprise"
     assert (
         docker_containers[2].image_sha256
@@ -269,6 +269,27 @@ async def test_docker(
     assert docker_containers[2].label_unraid_webui is None
     assert docker_containers[2].label_monitor is True
     assert docker_containers[2].label_name == "Grafana Public"
+
+
+@pytest.mark.parametrize("api_responses", API_RESPONSES)
+async def test_start_stop_container(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
+    docker_containers = await api_client.query_docker()
+    container = await api_client.stop_container(docker_containers[0].id)
+    assert container.id == docker_containers[0].id
+    assert container.state == ContainerState.EXITED
+
+    container = await api_client.start_container(docker_containers[2].id)
+    assert container.id == docker_containers[2].id
+    assert container.state == ContainerState.RUNNING
 
 
 def test_normalize_url() -> None:
