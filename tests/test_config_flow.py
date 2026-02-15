@@ -8,7 +8,14 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from aiohttp import ClientConnectionError, ClientSSLError
 from awesomeversion import AwesomeVersion
-from custom_components.unraid_api.const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from custom_components.unraid_api.const import (
+    CONF_DOCKER_MODE,
+    CONF_DRIVES,
+    CONF_SHARES,
+    DOCKER_MODE_ALL,
+    DOCKER_MODE_OFF,
+    DOMAIN,
+)
 from custom_components.unraid_api.exceptions import (
     GraphQLError,
     GraphQLUnauthorizedError,
@@ -56,7 +63,7 @@ async def test_user_init(
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_SHARES: True, CONF_DRIVES: True},
+        user_input={CONF_SHARES: True, CONF_DRIVES: True, CONF_DOCKER_MODE: DOCKER_MODE_ALL},
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -66,6 +73,7 @@ async def test_user_init(
     assert result["data"][CONF_VERIFY_SSL] is False
     assert result["options"][CONF_SHARES] is True
     assert result["options"][CONF_DRIVES] is True
+    assert result["options"][CONF_DOCKER_MODE] is DOCKER_MODE_ALL
 
     mock_setup_entry.assert_awaited_once()
 
@@ -386,11 +394,12 @@ async def test_options(
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={CONF_SHARES: False, CONF_DRIVES: False},
+        user_input={CONF_SHARES: False, CONF_DRIVES: False, CONF_DOCKER_MODE: DOCKER_MODE_OFF},
     )
 
     assert mock_config.options[CONF_SHARES] is False
     assert mock_config.options[CONF_DRIVES] is False
+    assert mock_config.options[CONF_DOCKER_MODE] is DOCKER_MODE_OFF
 
     await hass.async_block_till_done()
     mock_setup_entry.assert_awaited_once()

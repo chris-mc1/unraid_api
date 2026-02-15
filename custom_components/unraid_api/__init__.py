@@ -14,7 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 
 from .api import get_api_client
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_DOCKER_MODE, DOCKER_MODE_OFF, DOMAIN, PLATFORMS
 from .coordinator import UnraidDataUpdateCoordinator
 from .exceptions import (
     GraphQLError,
@@ -114,3 +114,32 @@ async def async_unload_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> b
         await entry.runtime_data.coordinator.api_client.stop_websocket()
         del entry.runtime_data
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: UnraidConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug(
+        "Migrating configuration from version %s.%s",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+
+    if config_entry.version > 1:
+        return False
+
+    if config_entry.version == 1:
+        new_options = config_entry.options.copy()
+        if config_entry.minor_version < 2:
+            new_options[CONF_DOCKER_MODE] = DOCKER_MODE_OFF
+
+        hass.config_entries.async_update_entry(
+            config_entry, data=config_entry.data, options=new_options, minor_version=2, version=1
+        )
+
+    _LOGGER.debug(
+        "Migration to configuration version %s.%s successful",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+
+    return True

@@ -30,6 +30,8 @@ def add_config_entry(
             CONF_VERIFY_SSL: False,
         },
         options=options,
+        version=1,
+        minor_version=2,
     )
     entry.add_to_hass(hass)
     return entry
