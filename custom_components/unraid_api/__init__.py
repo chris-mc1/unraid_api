@@ -142,3 +142,22 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: UnraidConfigEnt
     )
 
     return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,  # noqa: ARG001
+    config_entry: UnraidConfigEntry,
+    device_entry: DeviceEntry,
+) -> bool:
+    """Remove a config entry from a device."""
+    for identifier in device_entry.identifiers:
+        if identifier[0] == DOMAIN:
+            if identifier[1] == config_entry.entry_id:
+                # Root device
+                return False
+            for container in config_entry.runtime_data.containers.values():
+                for container_identifier in container["device_info"]["identifiers"]:
+                    if identifier == container_identifier:
+                        # Still active
+                        return False
+    return True

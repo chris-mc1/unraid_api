@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
