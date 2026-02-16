@@ -15,7 +15,7 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .api import get_api_client
 from .const import CONF_DOCKER_MODE, DOCKER_MODE_OFF, DOMAIN, PLATFORMS
-from .coordinator import UnraidDataUpdateCoordinator
+from .coordinator import Container, UnraidDataUpdateCoordinator
 from .exceptions import (
     GraphQLError,
     GraphQLMultiError,
@@ -25,6 +25,8 @@ from .exceptions import (
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.device_registry import DeviceEntry
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class UnraidData:
 
     coordinator: UnraidDataUpdateCoordinator
     device_info: DeviceInfo
-    container_device_info: dict[str, DeviceInfo]
+    containers: dict[str, Container]
 
 
 type UnraidConfigEntry = ConfigEntry[UnraidData]
@@ -98,7 +100,7 @@ async def async_setup_entry(
         configuration_url=server_info.localurl,
     )
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
-    config_entry.runtime_data = UnraidData(coordinator, device_info, {})
+    config_entry.runtime_data = UnraidData(coordinator, device_info, containers={})
     await coordinator.async_config_entry_first_refresh()
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)

@@ -438,17 +438,14 @@ async def async_setup_entry(
         async_add_entites(entities)
 
     @callback
-    def add_container_callback(
-        container_name: str,
-        *,
-        remove: bool = False,  # noqa: ARG001
-    ) -> None:
+    def add_container_callback(container_name: str) -> None:
         _LOGGER.debug("Sensor: Adding new Docker container: %s", container_name)
         entities = [
             UnraidDockerSensor(description, config_entry, container_name)
             for description in DOCKER_SENSOR_DESCRIPTIONS
             if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
+        config_entry.runtime_data.containers[container_name]["entities"].extend(entities)
         async_add_entites(entities)
 
     if config_entry.options[CONF_DRIVES]:
@@ -604,7 +601,7 @@ class UnraidDockerSensor(UnraidBaseEntity, SensorEntity):
         super().__init__(description, config_entry)
         self.container_name = container_name
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.container_name}"
-        self._attr_device_info = config_entry.runtime_data.container_device_info[container_name]
+        self._attr_device_info = config_entry.runtime_data.containers[container_name]["device_info"]
 
     @property
     def native_value(self) -> StateType:

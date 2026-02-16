@@ -47,17 +47,14 @@ async def async_setup_entry(
     """Set up this integration using config entry."""
 
     @callback
-    def add_container_callback(
-        container_name: str,
-        *,
-        remove: bool = False,  # noqa: ARG001
-    ) -> None:
+    def add_container_callback(container_name: str) -> None:
         _LOGGER.debug("Switch: Adding new Docker container: %s", container_name)
         entities = [
             UnraidDockerSwitch(description, config_entry, container_name)
             for description in DOCKER_SWITCH_DESCRIPTIONS
             if description.min_version <= config_entry.runtime_data.coordinator.api_client.version
         ]
+        config_entry.runtime_data.containers[container_name]["entities"].extend(entities)
         async_add_entites(entities)
 
     config_entry.runtime_data.coordinator.subscribe_docker(add_container_callback)
@@ -78,7 +75,7 @@ class UnraidDockerSwitch(UnraidBaseEntity, SwitchEntity):
         super().__init__(description, config_entry)
         self.container_name = container_name
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.container_name}"
-        self._attr_device_info = config_entry.runtime_data.container_device_info[container_name]
+        self._attr_device_info = config_entry.runtime_data.containers[container_name]["device_info"]
 
     @property
     def is_on(self) -> bool:

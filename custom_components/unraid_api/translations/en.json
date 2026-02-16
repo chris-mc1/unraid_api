@@ -4,7 +4,7 @@
             "user": {
                 "title": "Add new Unraid server",
                 "data": {
-                    "host": "Unraid WebUI URL including http(s):// and port)",
+                    "host": "Unraid WebUI URL (including http(s):// and port)",
                     "api_key": "API key",
                     "verify_ssl": "Verify SSL certificate"
                 }

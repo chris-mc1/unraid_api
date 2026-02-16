@@ -69,3 +69,22 @@ async def test_docker_switches_action(
         blocking=True,
     )
     api_client.stop_container.assert_awaited_once_with(api_client.state.docker[0].id)
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_docker_switches_removed(hass: HomeAssistant, mock_api_client: MagicMock) -> None:
+    """Test docker container switch entities."""
+    api_client: MockApiClient = mock_api_client.return_value
+
+    config_entry = await setup_config_entry(hass)
+    assert config_entry
+
+    assert hass.states.get("switch.test_server_homeassistant")
+    assert hass.states.get("switch.test_server_grafana_public")
+
+    api_client.state.docker.pop(0)
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert hass.states.get("switch.test_server_homeassistant") is None
+    assert hass.states.get("switch.test_server_grafana_public")

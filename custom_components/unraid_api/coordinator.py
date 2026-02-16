@@ -39,9 +39,15 @@ if TYPE_CHECKING:
 
     from . import UnraidConfigEntry
     from .api import UnraidApiClient
+    from .entity import UnraidBaseEntity
     from .models import Disk, MetricsArray, Share, UpsDevice
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class Container(TypedDict):  # noqa: D101
+    device_info: DeviceInfo
+    entities: list[UnraidBaseEntity]
 
 
 class UnraidServerData(TypedDict):  # noqa: D101
@@ -84,7 +90,6 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         self.known_disks: set[str] = set()
         self.known_shares: set[str] = set()
         self.known_ups_devices: set[str] = set()
-        self.known_containers: set[str] = set()
         self.data = UnraidServerData()
 
         await self._connect_websocket()
@@ -269,8 +274,9 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
         self.data["docker_containers"] = containers
         found_containers = set(containers.keys())
-        new_containers = found_containers - self.known_containers
-        removed_containers = self.known_containers - found_containers
+        known_containers = set(self.config_entry.runtime_data.containers.keys())
+        new_containers = found_containers - known_containers
+        removed_containers = known_containers - found_containers
 
         for container_name in new_containers:
             container = containers[container_name]
@@ -284,14 +290,27 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                 device_info["configuration_url"] = container.label_unraid_webui
             if container.label_opencontainers_version:
                 device_info["sw_version"] = container.label_opencontainers_version
-            self.config_entry.runtime_data.container_device_info[container_name] = device_info
 
-            self._do_callback(self.docker_callbacks, containers[container_name])
+            self.config_entry.runtime_data.containers[container_name] = Container(
+                device_info=device_info, entities=[]
+            )
+            self._do_callback(self.docker_callbacks, container_name)
 
         for container_name in removed_containers:
-            self._do_callback(self.docker_callbacks, containers[container_name], removed=True)
+            _LOGGER.debug("Removing Docker container: %s", container_name)
+            container = self.config_entry.runtime_data.containers.pop(container_name)
+            for entity in container["entities"]:
+                await entity.async_remove()
 
-        self.known_containers = found_containers
+            device_registry = dr.async_get(self.hass)
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, f"{self.config_entry.entry_id}_docker_{container_name}")}
+            )
+            if device:
+                device_registry.async_update_device(
+                    device_id=device.id,
+                    remove_config_entry_id=self.config_entry.entry_id,
+                )
 
     def subscribe_disks(self, callback: Callable[[Disk], None]) -> None:
         self.disk_callbacks.add(callback)
@@ -308,9 +327,9 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         for ups_id in self.known_ups_devices:
             self._do_callback([callback], self.data["ups_devices"][ups_id])
 
-    def subscribe_docker(self, callback: Callable[[str, bool], None]) -> None:
+    def subscribe_docker(self, callback: Callable[[str], None]) -> None:
         self.docker_callbacks.add(callback)
-        for container_name in self.known_containers:
+        for container_name in self.config_entry.runtime_data.containers:
             self._do_callback([callback], container_name)
 
     def _cpu_metrics_callback(self, data: CpuMetricsSubscription) -> None:
