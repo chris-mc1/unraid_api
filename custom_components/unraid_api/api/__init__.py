@@ -261,7 +261,7 @@ class UnraidApiClientBase:
             raise GraphQLMultiError(errors_dicts=payload, data=message_dict)
 
     async def _subscribe(
-        self, query: str, operation_name: str, callback: Callable[[float], None]
+        self, query: str, operation_name: str, callback: Callable[[Any], None]
     ) -> None:
         if not self._ws_connected:
             msg = "Websocket not connected"

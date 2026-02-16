@@ -240,7 +240,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                     self.known_ups_devices.add(device.id)
                     self._do_callback(self.ups_callbacks, device)
         except UnraidApiError as exc:
-            _LOGGER.debug("UPS Update: %S", str(exc), exc_info=True)
+            _LOGGER.debug("UPS Update: %s", str(exc), exc_info=True)
 
         self.data["ups_devices"] = devices
 
@@ -263,6 +263,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             container_name = container.label_name or container.name
             if container_name in containers:
                 _LOGGER.warning("Duplicate container name %s", container_name)
+                containers.pop(container_name)
                 continue
             containers[container_name] = container
 

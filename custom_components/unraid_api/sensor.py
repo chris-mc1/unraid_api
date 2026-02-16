@@ -375,6 +375,7 @@ DOCKER_SENSOR_DESCRIPTIONS: tuple[UnraidDockerSensorEntityDescription, ...] = (
             "status": container.status,
             "image": container.image,
             "sha265": container.image_sha256,
+            "version": container.label_opencontainers_version,
         },
     ),
 )

@@ -424,6 +424,7 @@ async def test_docker_sensors_monitor_all(
         == "e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d"
     )
     assert state.attributes["status"] == "Up 28 minutes"
+    assert state.attributes["version"] == "2026.2.2"
 
     # postgres
     state = hass.states.get("sensor.test_server_postgres_state")

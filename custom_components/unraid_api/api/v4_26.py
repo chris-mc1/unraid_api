@@ -148,6 +148,7 @@ query UpsDevices {
 }
 """
 
+
 ## Subscription
 CPU_METRICS_SUBSCRIPTION = """
 subscription CpuMetrics {
