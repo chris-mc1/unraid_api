@@ -159,7 +159,11 @@
                 "name": "Output voltage"
             },
             "docker_state": {
-                "name": "State"
+                "name": "State",
+                "state": {
+                    "running": "Running",
+                    "exited": "Exited"
+                }
             }
         },
         "binary_sensor": {
