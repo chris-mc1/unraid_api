@@ -5,14 +5,17 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
+import yarl
 from awesomeversion import AwesomeVersion
 from pydantic import BaseModel, Field
 
 from custom_components.unraid_api.models import (
     ArrayState,
+    ContainerState,
     Disk,
     DiskStatus,
     DiskType,
+    DockerContainer,
     MemorySubscription,
     MetricsArray,
     ParityCheckStatus,
@@ -20,10 +23,38 @@ from custom_components.unraid_api.models import (
     Share,
 )
 
-from . import UnraidApiClient
+from . import _LOGGER, UnraidApiClient, _to_bool
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+def _make_container_obj(container: _DockerContainer) -> DockerContainer:
+    label_unraid_webui = container.labels.get("net.unraid.docker.webui", "")
+    if label_unraid_webui == "":
+        webui = None
+    else:
+        url = label_unraid_webui if "://" in label_unraid_webui else f"http://{label_unraid_webui}"
+        try:
+            webui = yarl.URL(url)
+        except (ValueError, TypeError):
+            _LOGGER.debug("Can't build webui url: %s", label_unraid_webui)
+
+    label_name = container.labels.get("io.home-assistant.unraid_api.name")
+    name = label_name or None
+
+    return DockerContainer(
+        id=container.id,
+        name=container.names[0].lstrip("/"),
+        state=container.state,
+        image=container.image,
+        image_sha256=container.image_sha265.removeprefix("sha256:"),
+        status=container.status,
+        label_opencontainers_version=container.labels.get("org.opencontainers.image.version"),
+        label_unraid_webui=webui,
+        label_monitor=_to_bool(container.labels.get("io.home-assistant.unraid_api.monitor")),
+        label_name=name,
+    )
 
 
 class UnraidApiV420(UnraidApiClient):
@@ -127,6 +158,10 @@ class UnraidApiV420(UnraidApiClient):
         )
         return disks
 
+    async def query_docker(self) -> list[DockerContainer]:
+        response = await self.call_api(DOCKER_QUERY, DockerQuery)
+        return [_make_container_obj(container) for container in response.docker.containers]
+
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         def _callback(data: Any) -> None:
             model = SystemMetricsCpuSubscription.model_validate(data)
@@ -163,6 +198,14 @@ class UnraidApiV420(UnraidApiClient):
 
     async def resume_parity_check(self) -> None:
         await self.call_api(PARITY_CHECK_RESUME, None)
+
+    async def start_container(self, container_id: str) -> DockerContainer:
+        model = await self.call_api(DOCKER_START, DockerStart, {"startId": container_id})
+        return _make_container_obj(model.docker.start)
+
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        model = await self.call_api(DOCKER_STOP, DockerStop, {"stopId": container_id})
+        return _make_container_obj(model.docker.stop)
 
 
 ## Queries
@@ -267,6 +310,21 @@ query Disks {
   }
 }
 """
+DOCKER_QUERY = """
+query DockerContainers {
+  docker {
+    containers {
+      labels
+      names
+      id
+      image
+      imageId
+      state
+      status
+    }
+  }
+}
+"""
 
 
 ## Subscription
@@ -290,6 +348,8 @@ subscription Memory {
 
 """
 
+
+## Mutations
 PARITY_CHECK_START = """
 mutation ParityCheck {
   parityCheck {
@@ -318,6 +378,38 @@ PARITY_CHECK_RESUME = """
 mutation ParityCheck {
   parityCheck {
     resume
+  }
+}
+"""
+
+DOCKER_START = """
+mutation DockerStart($startId: PrefixedID!) {
+  docker {
+    start(id: $startId) {
+      state
+      names
+      labels
+      id
+      image
+      imageId
+      status
+    }
+  }
+}
+"""
+
+DOCKER_STOP = """
+mutation DockerStop($stopId: PrefixedID!) {
+  docker {
+    stop(id: $stopId) {
+      state
+      names
+      labels
+      id
+      image
+      imageId
+      status
+    }
   }
 }
 """
@@ -433,6 +525,41 @@ class FSDisk(ParityDisk):  # noqa: D101
     fs_size: int | None = Field(alias="fsSize")
     fs_free: int | None = Field(alias="fsFree")
     fs_used: int | None = Field(alias="fsUsed")
+
+
+### Docker
+class DockerQuery(BaseModel):  # noqa: D101
+    docker: Docker
+
+
+class Docker(BaseModel):  # noqa: D101
+    containers: list[_DockerContainer]
+
+
+class _DockerContainer(BaseModel):
+    id: str
+    names: list[str]
+    state: ContainerState
+    labels: dict[str, str]
+    image: str
+    image_sha265: str = Field(alias="imageId")
+    status: str
+
+
+class DockerStart(BaseModel):  # noqa: D101
+    docker: _DockerStart
+
+
+class _DockerStart(BaseModel):
+    start: _DockerContainer
+
+
+class DockerStop(BaseModel):  # noqa: D101
+    docker: _DockerStop
+
+
+class _DockerStop(BaseModel):
+    stop: _DockerContainer
 
 
 ### CpuMetrics

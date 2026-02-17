@@ -5,12 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import ClassVar
 
+import yarl
 from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.models import (
     ArrayState,
+    ContainerState,
     Disk,
     DiskStatus,
     DiskType,
+    DockerContainer,
     MetricsArray,
     ParityCheckStatus,
     ServerInfo,
@@ -28,6 +31,7 @@ class ApiState:
     shares: ClassVar[list[Share]]
     disks: ClassVar[list[Disk]]
     ups: ClassVar[list[UpsDevice]]
+    docker: ClassVar[list[DockerContainer]]
 
 
 class ApiState420(ApiState):
@@ -118,6 +122,44 @@ class ApiState420(ApiState):
             ),
         ]
         self.ups = None
+        self.docker = [
+            DockerContainer(
+                id="4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:9591842fdb0e817f385407d6eb71d0070bcdfd3008506d5e7e53c3036939c2b0",
+                name="homeassistant",
+                state=ContainerState.RUNNING,
+                image="ghcr.io/home-assistant/home-assistant:stable",
+                image_sha256="e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d",
+                status="Up 28 minutes",
+                label_opencontainers_version="2026.2.2",
+                label_unraid_webui=yarl.URL("http://homeassistant.unraid.lan"),
+                label_monitor=None,
+                label_name=None,
+            ),
+            DockerContainer(
+                id="4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:db6215c5578bd28bc78fab45e16b7a2d6d94ec3bb3b23a5ad5b8b4979e79bf86",
+                name="postgres",
+                state=ContainerState.RUNNING,
+                image="postgres:15",
+                image_sha256="a748a13f04094ee02b167d3e2a919368bc5e93cbd2b1c41a6d921dbaa59851ac",
+                status="Up 28 minutes",
+                label_opencontainers_version=None,
+                label_unraid_webui=None,
+                label_monitor=False,
+                label_name="Postgres",
+            ),
+            DockerContainer(
+                id="4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369",
+                name="grafana",
+                state=ContainerState.EXITED,
+                image="grafana/grafana-enterprise",
+                image_sha256="32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5",
+                status="Up 28 minutes",
+                label_opencontainers_version=None,
+                label_unraid_webui=None,
+                label_monitor=True,
+                label_name="Grafana Public",
+            ),
+        ]
 
 
 class ApiState426(ApiState420):

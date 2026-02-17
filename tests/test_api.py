@@ -6,10 +6,18 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+import yarl
 from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.api import IncompatibleApiError, UnraidApiClient, get_api_client
 from custom_components.unraid_api.api import _normalize_url as normalize_url
-from custom_components.unraid_api.models import ArrayState, DiskStatus, DiskType, ParityCheckStatus
+from custom_components.unraid_api.api import _to_bool as to_bool
+from custom_components.unraid_api.models import (
+    ArrayState,
+    ContainerState,
+    DiskStatus,
+    DiskType,
+    ParityCheckStatus,
+)
 
 from .graphql_responses import API_RESPONSES, GraphqlResponses, GraphqlResponses410
 
@@ -191,6 +199,99 @@ async def test_disks(
     assert disks[2].is_spinning is False
 
 
+@pytest.mark.parametrize("api_responses", API_RESPONSES)
+async def test_docker(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test querying docker."""
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
+    docker_containers = await api_client.query_docker()
+
+    assert len(docker_containers) == 3
+
+    ## Homeassistant
+
+    assert (
+        docker_containers[0].id
+        == "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:9591842fdb0e817f385407d6eb71d0070bcdfd3008506d5e7e53c3036939c2b0"  # noqa: E501
+    )
+    assert docker_containers[0].name == "homeassistant"
+    assert docker_containers[0].state == ContainerState.RUNNING
+    assert docker_containers[0].image == "ghcr.io/home-assistant/home-assistant:stable"
+    assert (
+        docker_containers[0].image_sha256
+        == "e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d"
+    )
+    assert docker_containers[0].status == "Up 28 minutes"
+    assert docker_containers[0].label_opencontainers_version == "2026.2.2"
+    assert docker_containers[0].label_unraid_webui == yarl.URL("http://homeassistant.unraid.lan")
+    assert docker_containers[0].label_monitor is None
+    assert docker_containers[0].label_name is None
+
+    ## Postgres
+
+    assert (
+        docker_containers[1].id
+        == "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:db6215c5578bd28bc78fab45e16b7a2d6d94ec3bb3b23a5ad5b8b4979e79bf86"  # noqa: E501
+    )
+    assert docker_containers[1].name == "postgres"
+    assert docker_containers[1].state == ContainerState.RUNNING
+    assert docker_containers[1].image == "postgres:15"
+    assert (
+        docker_containers[1].image_sha256
+        == "a748a13f04094ee02b167d3e2a919368bc5e93cbd2b1c41a6d921dbaa59851ac"
+    )
+    assert docker_containers[1].status == "Up 28 minutes"
+    assert docker_containers[1].label_opencontainers_version is None
+    assert docker_containers[1].label_unraid_webui is None
+    assert docker_containers[1].label_monitor is False
+    assert docker_containers[1].label_name == "Postgres"
+    ## Grafana
+
+    assert (
+        docker_containers[2].id
+        == "4d5df9c6bac5b77205f8e09cbe31fbd230d7735625d8853c7740893ab1c98e65:cc3843b7435c45ba8ff9c10b7e3c494d51fc303e609d12825b63537be52db369"  # noqa: E501
+    )
+    assert docker_containers[2].name == "grafana"
+    assert docker_containers[2].state == ContainerState.EXITED
+    assert docker_containers[2].image == "grafana/grafana-enterprise"
+    assert (
+        docker_containers[2].image_sha256
+        == "32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5"
+    )
+    assert docker_containers[2].status == "Up 28 minutes"
+    assert docker_containers[2].label_opencontainers_version is None
+    assert docker_containers[2].label_unraid_webui is None
+    assert docker_containers[2].label_monitor is True
+    assert docker_containers[2].label_name == "Grafana Public"
+
+
+@pytest.mark.parametrize("api_responses", API_RESPONSES)
+async def test_start_stop_container(
+    api_responses: GraphqlResponses,
+    mock_graphql_server: Callable[..., Awaitable[GraphqlServerMocker]],
+) -> None:
+    """Test docker mutations."""
+    mocker = await mock_graphql_server(api_responses)
+    session = mocker.create_session()
+    api_client = await get_api_client(
+        f"{mocker.server.host}:{mocker.server.port}", "test_key", session
+    )
+    docker_containers = await api_client.query_docker()
+    container = await api_client.stop_container(docker_containers[0].id)
+    assert container.id == docker_containers[0].id
+    assert container.state == ContainerState.EXITED
+
+    container = await api_client.start_container(docker_containers[2].id)
+    assert container.id == docker_containers[2].id
+    assert container.state == ContainerState.RUNNING
+
+
 def test_normalize_url() -> None:
     """Test URL normalization."""
     assert str(normalize_url("192.168.1.10")) == "http://192.168.1.10"
@@ -212,3 +313,27 @@ def test_normalize_url() -> None:
     assert str(normalize_url("http://unraid.lan:8080")) == "http://unraid.lan:8080"
     assert str(normalize_url("https://unraid.lan:8080")) == "https://unraid.lan:8080"
     assert str(normalize_url("unraid.lan:8080/graphql")) == "http://unraid.lan:8080"
+
+
+def test_convert_bool() -> None:
+    """Test str to bool."""
+    assert to_bool("True") is True
+    assert to_bool("true") is True
+    assert to_bool("False") is False
+    assert to_bool("false") is False
+
+    assert to_bool(True) is True  # noqa: FBT003
+    assert to_bool(False) is False  # noqa: FBT003
+
+    assert to_bool(0) is False
+    assert to_bool(1) is True
+    assert to_bool(1.5) is True
+
+    assert to_bool("0") is False
+    assert to_bool("1") is True
+    assert to_bool("1.5") is True
+
+    assert to_bool(None) is None
+    assert to_bool("") is None
+    assert to_bool({}) is None
+    assert to_bool("not bool") is None

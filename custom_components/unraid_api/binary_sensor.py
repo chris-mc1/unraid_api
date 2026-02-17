@@ -2,40 +2,35 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
-from awesomeversion import AwesomeVersion
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import _LOGGER
 from .const import CONF_DRIVES
-from .coordinator import UnraidDataUpdateCoordinator
+from .entity import UnraidBaseEntity, UnraidEntityDescription
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
-    from homeassistant.helpers.typing import StateType
 
     from . import UnraidConfigEntry
     from .models import Disk
 
 
-_LOGGER = logging.getLogger(__name__)
-
-
-class UnraidDiskBinarySensorEntityDescription(BinarySensorEntityDescription, frozen_or_thawed=True):
+class UnraidDiskBinarySensorEntityDescription(
+    UnraidEntityDescription, BinarySensorEntityDescription, frozen_or_thawed=True
+):
     """Description for Unraid Binary Sensor Entity."""
 
-    min_version: AwesomeVersion = AwesomeVersion("4.20.0")
-    value_fn: Callable[[Disk], StateType]
+    value_fn: Callable[[Disk], bool]
     extra_values_fn: Callable[[Disk], dict[str, Any]] | None = None
 
 
@@ -57,7 +52,7 @@ async def async_setup_entry(
 
     @callback
     def add_disk_callback(disk: Disk) -> None:
-        _LOGGER.debug("Adding new disk: %s", disk.name)
+        _LOGGER.debug("Binary Sensor: Adding new disk: %s", disk.name)
         entities = [
             UnraidDiskBinarySensorEntity(description, config_entry, disk.id)
             for description in DISK_BINARY_SENSOR_DESCRIPTIONS
@@ -69,13 +64,10 @@ async def async_setup_entry(
         config_entry.runtime_data.coordinator.subscribe_disks(add_disk_callback)
 
 
-class UnraidDiskBinarySensorEntity(
-    CoordinatorEntity[UnraidDataUpdateCoordinator], BinarySensorEntity
-):
+class UnraidDiskBinarySensorEntity(UnraidBaseEntity, BinarySensorEntity):
     """Binary Sensor for Unraid Disks."""
 
     entity_description: UnraidDiskBinarySensorEntityDescription
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -83,19 +75,15 @@ class UnraidDiskBinarySensorEntity(
         config_entry: UnraidConfigEntry,
         disk_id: str,
     ) -> None:
-        super().__init__(config_entry.runtime_data.coordinator)
+        super().__init__(description, config_entry)
         self.disk_id = disk_id
-        self.entity_description = description
         self._attr_unique_id = f"{config_entry.entry_id}-{description.key}-{self.disk_id}"
-        self._attr_translation_key = description.key
         self._attr_translation_placeholders = {
             "disk_name": self.coordinator.data["disks"][self.disk_id].name
         }
-        self._attr_available = False
-        self._attr_device_info = config_entry.runtime_data.device_info
 
     @property
-    def is_on(self) -> StateType:
+    def is_on(self) -> bool | None:
         try:
             return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
         except (KeyError, AttributeError):

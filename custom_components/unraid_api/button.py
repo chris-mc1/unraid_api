@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
-from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN
 from .entity import UnraidBaseEntity, UnraidEntityDescription
-from .exceptions import GraphQLError, GraphQLMultiError, GraphQLUnauthorizedError
+from .helpers import error_handler
 from .models import ParityCheckStatus
 
 if TYPE_CHECKING:
@@ -26,7 +22,6 @@ if TYPE_CHECKING:
 
 
 PARALLEL_UPDATES = 1
-_LOGGER = logging.getLogger(__name__)
 
 
 class UnraidButtonEntityDescription(
@@ -91,34 +86,6 @@ class UnraidButton(UnraidBaseEntity, ButtonEntity):
 
     entity_description: UnraidButtonEntityDescription
 
+    @error_handler
     async def async_press(self) -> None:
-        try:
-            await self.entity_description.call(self.coordinator)
-        except ClientConnectorSSLError as exc:
-            _LOGGER.debug("Button: SSL error: %s", str(exc))
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="ssl_error",
-                translation_placeholders={"error": str(exc)},
-            ) from exc
-        except (ClientConnectionError, TimeoutError) as exc:
-            _LOGGER.debug("Button: Connection error: %s", str(exc))
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="cannot_connect",
-                translation_placeholders={"error": str(exc)},
-            ) from exc
-        except GraphQLUnauthorizedError as exc:
-            _LOGGER.debug("Button: Auth failed")
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="auth_failed",
-                translation_placeholders={"error_msg": str(exc)},
-            ) from exc
-        except (GraphQLError, GraphQLMultiError) as exc:
-            _LOGGER.debug("Button: GraphQL Error response: %s", str(exc))
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="error_response",
-                translation_placeholders={"error_msg": str(exc)},
-            ) from exc
+        await self.entity_description.call(self.coordinator)

@@ -49,6 +49,11 @@ class ParityCheckStatus(StrEnum):  # noqa: D101
     FAILED = "FAILED"
 
 
+class ContainerState(StrEnum):  # noqa: D101
+    RUNNING = "RUNNING"
+    EXITED = "EXITED"
+
+
 @dataclass
 class ServerInfo:
     """Server Info."""
@@ -122,6 +127,22 @@ class UpsDevice:
     load_percentage: float
     output_voltage: float
     input_voltage: float
+
+
+@dataclass
+class DockerContainer:
+    """Docker Container."""
+
+    id: str
+    name: str
+    state: ContainerState
+    image: str
+    image_sha256: str
+    status: str
+    label_opencontainers_version: str | None
+    label_unraid_webui: str | None
+    label_monitor: bool | None
+    label_name: str | None
 
 
 @dataclass

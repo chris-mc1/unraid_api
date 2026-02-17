@@ -6,6 +6,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from awesomeversion import AwesomeVersion
+from custom_components.unraid_api.const import (
+    CONF_DOCKER_MODE,
+    CONF_DRIVES,
+    CONF_SHARES,
+    DOCKER_MODE_ENABLED_ONLY,
+    DOCKER_MODE_EXCEPT_DISABLED,
+)
 from custom_components.unraid_api.models import CpuMetricsSubscription, MemorySubscription
 
 from . import setup_config_entry
@@ -389,3 +396,143 @@ async def test_parity_check_sensors(
     # parity_check_progress
     state = hass.states.get("sensor.test_server_parity_check_progress")
     assert state.state == "0"
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_state"), API_STATES)
+async def test_docker_sensors_monitor_all(
+    api_state: ApiState,
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test docker container sensor entities."""
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(hass)
+
+    # homeassistant
+    state = hass.states.get("sensor.test_server_homeassistant_state")
+    assert state.state == "running"
+    assert state.attributes["image"] == "ghcr.io/home-assistant/home-assistant:stable"
+    assert (
+        state.attributes["sha265"]
+        == "e0477b544d48b26ad81e2132b8ce36f0a20dfd7eb44de9c40718fa78dc92e24d"
+    )
+    assert state.attributes["status"] == "Up 28 minutes"
+    assert state.attributes["version"] == "2026.2.2"
+
+    # postgres
+    state = hass.states.get("sensor.test_server_postgres_state")
+    assert state.state == "running"
+    assert state.attributes["image"] == "postgres:15"
+    assert (
+        state.attributes["sha265"]
+        == "a748a13f04094ee02b167d3e2a919368bc5e93cbd2b1c41a6d921dbaa59851ac"
+    )
+    assert state.attributes["status"] == "Up 28 minutes"
+
+    # grafana
+    state = hass.states.get("sensor.test_server_grafana_public_state")
+    assert state.state == "exited"
+    assert state.attributes["image"] == "grafana/grafana-enterprise"
+    assert (
+        state.attributes["sha265"]
+        == "32241300d32d708c29a186e61692ff00d6c3f13cb862246326edd4612d735ae5"
+    )
+    assert state.attributes["status"] == "Up 28 minutes"
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_state"), API_STATES)
+async def test_docker_sensors_monitor_except_disabled(
+    api_state: ApiState,
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test docker container sensor entities with "except_disabled" option ."""
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(
+        hass, {CONF_SHARES: True, CONF_DRIVES: True, CONF_DOCKER_MODE: DOCKER_MODE_EXCEPT_DISABLED}
+    )
+
+    # homeassistant
+    state = hass.states.get("sensor.test_server_homeassistant_state")
+    assert state
+
+    # postgres
+    state = hass.states.get("sensor.test_server_postgres_state")
+    assert state is None
+
+    # grafana
+    state = hass.states.get("sensor.test_server_grafana_public_state")
+    assert state
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+@pytest.mark.parametrize(("api_state"), API_STATES)
+async def test_docker_sensors_monitor_enabled_only(
+    api_state: ApiState,
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test docker container sensor entities with "enabled_only" option ."""
+    api_client: MockApiClient = mock_api_client.return_value
+    api_client.state = api_state()
+    assert await setup_config_entry(
+        hass, {CONF_SHARES: True, CONF_DRIVES: True, CONF_DOCKER_MODE: DOCKER_MODE_ENABLED_ONLY}
+    )
+
+    # homeassistant
+    state = hass.states.get("sensor.test_server_homeassistant_state")
+    assert state is None
+
+    # postgres
+    state = hass.states.get("sensor.test_server_postgres_state")
+    assert state is None
+
+    # grafana
+    state = hass.states.get("sensor.test_server_grafana_public_state")
+    assert state
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_docker_sensors_disabled(
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,  # noqa: ARG001
+) -> None:
+    """Test docker sensor disabled."""
+    assert await setup_config_entry(hass, options=MOCK_OPTION_DATA_DISABLED)
+
+    state = hass.states.get("sensor.test_server_homeassistant_state")
+    assert state is None
+
+    state = hass.states.get("sensor.test_server_postgres_state")
+    assert state is None
+
+    state = hass.states.get("sensor.test_server_grafana_public_state")
+    assert state is None
+
+
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
+async def test_docker_sensors_removed(
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,
+) -> None:
+    """Test docker container sensor removed."""
+    api_client: MockApiClient = mock_api_client.return_value
+
+    config_entry = await setup_config_entry(hass)
+    assert config_entry
+
+    assert hass.states.get("sensor.test_server_homeassistant_state")
+    assert hass.states.get("sensor.test_server_postgres_state")
+    assert hass.states.get("sensor.test_server_grafana_public_state")
+
+    api_client.state.docker.pop(0)
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert hass.states.get("sensor.test_server_homeassistant_state") is None
+    assert hass.states.get("sensor.test_server_postgres_state")
+    assert hass.states.get("sensor.test_server_grafana_public_state")

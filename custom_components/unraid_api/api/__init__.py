@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from custom_components.unraid_api.models import (
         CpuMetricsSubscription,
         Disk,
+        DockerContainer,
         MemorySubscription,
         MetricsArray,
         ServerInfo,
@@ -77,6 +78,21 @@ def _normalize_url(url_str: str) -> yarl.URL:
     url_str = url_str if "://" in url_str else f"http://{url_str}"
     url = yarl.URL(url_str)
     return url.origin()
+
+
+def _to_bool(obj: str | bool | float | None) -> bool | None:  # noqa: FBT001
+    if isinstance(obj, str):
+        if obj.lower() == "true":
+            return True
+        if obj.lower() == "false":
+            return False
+        with contextlib.suppress(ValueError):
+            obj = float(obj)
+    if isinstance(obj, bool):
+        return obj
+    if isinstance(obj, float | int):
+        return bool(obj)
+    return None
 
 
 def _parse_ws_message(message: WSMessage) -> dict:
@@ -245,7 +261,7 @@ class UnraidApiClientBase:
             raise GraphQLMultiError(errors_dicts=payload, data=message_dict)
 
     async def _subscribe(
-        self, query: str, operation_name: str, callback: Callable[[float], None]
+        self, query: str, operation_name: str, callback: Callable[[Any], None]
     ) -> None:
         if not self._ws_connected:
             msg = "Websocket not connected"
@@ -292,6 +308,10 @@ class UnraidApiClient(UnraidApiClientBase):
         pass
 
     @abstractmethod
+    async def query_docker(self) -> list[DockerContainer]:
+        pass
+
+    @abstractmethod
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         pass
 
@@ -319,6 +339,14 @@ class UnraidApiClient(UnraidApiClientBase):
 
     @abstractmethod
     async def resume_parity_check(self) -> None:
+        pass
+
+    @abstractmethod
+    async def start_container(self, container_id: str) -> DockerContainer:
+        pass
+
+    @abstractmethod
+    async def stop_container(self, container_id: str) -> DockerContainer:
         pass
 
 

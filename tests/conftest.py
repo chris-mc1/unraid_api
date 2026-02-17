@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from custom_components.unraid_api.models import (
         CpuMetricsSubscription,
         Disk,
+        DockerContainer,
         MemorySubscription,
         MetricsArray,
         ServerInfo,
@@ -83,7 +84,7 @@ class GraphqlServerMocker:
     async def handler(self, request: web.Request) -> web.Response:
         body = await request.json()
         query: str = body["query"]
-        query = query.split(" ")[1]
+        query = query.split(" ")[1].split("(")[0]
         response = self.responses.get_response(query)
         return web.json_response(data=response)
 
@@ -206,6 +207,9 @@ class MockApiClient:
     def __init__(self, state: type[ApiState]) -> None:
         self.state = state()
 
+        self.start_container = AsyncMock(return_value=self.state.docker[2])
+        self.stop_container = AsyncMock(return_value=self.state.docker[0])
+
     @property
     def version(self) -> AwesomeVersion:
         return self.state.version
@@ -231,6 +235,9 @@ class MockApiClient:
     async def query_ups(self) -> list[UpsDevice]:
         return self.state.ups
 
+    async def query_docker(self) -> list[DockerContainer]:
+        return self.state.docker
+
     async def subscribe_cpu_usage(self, callback: Callable[[float], None]) -> None:
         self.cpu_usage_callback = callback
 
@@ -241,6 +248,12 @@ class MockApiClient:
 
     async def subscribe_memory(self, callback: Callable[[MemorySubscription], None]) -> None:
         self.memory_callback = callback
+
+    async def start_container(self, container_id: str) -> DockerContainer:
+        pass
+
+    async def stop_container(self, container_id: str) -> DockerContainer:
+        pass
 
 
 @pytest.fixture

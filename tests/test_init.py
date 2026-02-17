@@ -9,8 +9,17 @@ import pytest
 from aiohttp import ClientConnectionError, ClientSSLError
 from awesomeversion import AwesomeVersion
 from custom_components.unraid_api.api import UnraidApiClient
+from custom_components.unraid_api.const import (
+    CONF_DOCKER_MODE,
+    CONF_DRIVES,
+    CONF_SHARES,
+    DOCKER_MODE_OFF,
+    DOMAIN,
+)
 from custom_components.unraid_api.exceptions import GraphQLUnauthorizedError, IncompatibleApiError
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from . import add_config_entry, setup_config_entry
 from .api_states import API_STATES, ApiState
@@ -105,3 +114,28 @@ async def test_load_failure_2(
 
     assert entry.state is ConfigEntryState.SETUP_ERROR
     await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_migrate_entry(hass: HomeAssistant) -> None:
+    """Test Config entry migration."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: DEFAULT_HOST,
+            CONF_API_KEY: "test_key",
+            CONF_VERIFY_SSL: False,
+        },
+        options={CONF_SHARES: True, CONF_DRIVES: True},
+        version=1,
+        minor_version=1,
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.minor_version == 2
+    assert entry.options == {
+        CONF_SHARES: True,
+        CONF_DRIVES: True,
+        CONF_DOCKER_MODE: DOCKER_MODE_OFF,
+    }

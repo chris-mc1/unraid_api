@@ -4,15 +4,17 @@
             "user": {
                 "title": "Add new Unraid server",
                 "data": {
-                    "host": "Unraid WebUI URL",
+                    "host": "Unraid WebUI URL (including http(s):// and port)",
                     "api_key": "API key",
                     "verify_ssl": "Verify SSL certificate"
                 }
             },
             "options": {
+                "description": "Select which aspects of your Server to monitor. CPU, RAM and Array are always enabled. Individual Docker container can be enable or disabled with Docker Labels",
                 "data": {
                     "shares": "Monitor shares",
-                    "drives": "Monitor disks"
+                    "drives": "Monitor disks",
+                    "docker_mode": "Monitor Docker Containers"
                 }
             },
             "reauth_key": {
@@ -155,6 +157,13 @@
             },
             "ups_output_voltage": {
                 "name": "Output voltage"
+            },
+            "docker_state": {
+                "name": "State",
+                "state": {
+                    "running": "Running",
+                    "exited": "Exited"
+                }
             }
         },
         "binary_sensor": {
@@ -185,10 +194,10 @@
             "message": "Failed to connect to Unraid: {error}"
         },
         "error_response": {
-            "message": "Recived an Error response from Unraid: {error_msg}"
+            "message": "Received an Error response from Unraid: {error_msg}"
         },
         "data_invalid": {
-            "message": "Recived invalid data from Unraid"
+            "message": "Received invalid data from Unraid"
         },
         "api_incompatible": {
             "message": "Incompatible API version (Current: {version}, minimum: {min_version})"
@@ -200,10 +209,22 @@
     "options": {
         "step": {
             "init": {
+                "description": "Select which aspects of your Server to monitor. CPU, RAM and Array are always enabled. Individual Docker container can be enable or disabled with Docker Labels",
                 "data": {
                     "shares": "Monitor shares",
-                    "drives": "Monitor disks"
+                    "drives": "Monitor disks",
+                    "docker_mode": "Monitor Docker"
                 }
+            }
+        }
+    },
+    "selector": {
+        "docker_mode": {
+            "options": {
+                "off": "Disabled",
+                "all": "All (Ignore labels)",
+                "enabled_only": "Enabled with Label only",
+                "except_disabled": "All except disabled with Label"
             }
         }
     }

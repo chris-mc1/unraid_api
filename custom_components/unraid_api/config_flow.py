@@ -16,12 +16,26 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWit
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import BooleanSelector
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
 from . import UnraidConfigEntry
 from .api import get_api_client
-from .const import CONF_DRIVES, CONF_SHARES, DOMAIN
+from .const import (
+    CONF_DOCKER_MODE,
+    CONF_DRIVES,
+    CONF_SHARES,
+    DOCKER_MODE_ALL,
+    DOCKER_MODE_ENABLED_ONLY,
+    DOCKER_MODE_EXCEPT_DISABLED,
+    DOCKER_MODE_OFF,
+    DOMAIN,
+)
 from .exceptions import (
     GraphQLError,
     GraphQLMultiError,
@@ -53,12 +67,28 @@ OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DRIVES, default=True): BooleanSelector(),
         vol.Required(CONF_SHARES, default=True): BooleanSelector(),
+        vol.Required(CONF_DOCKER_MODE, default=DOCKER_MODE_OFF): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    DOCKER_MODE_OFF,
+                    DOCKER_MODE_ALL,
+                    DOCKER_MODE_ENABLED_ONLY,
+                    DOCKER_MODE_EXCEPT_DISABLED,
+                ],
+                multiple=False,
+                mode=SelectSelectorMode.LIST,
+                translation_key="docker_mode",
+            )
+        ),
     }
 )
 
 
 class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
     """Unraid Config flow."""
+
+    VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         super().__init__()
