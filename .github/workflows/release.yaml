@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release_zip_file:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version,,}"
+          yq e -P -o=json \
+            -i ".version = \"${version}\"" \
+            "${{ github.workspace }}/custom_components/unraid_api/manifest.json"
+      - run: |
+          cd ${{ github.workspace }}/custom_components/unraid_api
+          zip unraid_api.zip -r ./
+      - uses: softprops/action-gh-release@v2.5.0
+        with:
+          files: ${{ github.workspace }}/custom_components/unraid_api/unraid_api.zip
