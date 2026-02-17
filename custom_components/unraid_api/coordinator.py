@@ -178,7 +178,6 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
         if not self.api_client.websocket_connected:
             self.data["cpu_usage"] = data.cpu_percent_total
             self.data["memory"] = MemorySubscription(
-                free=data.memory_free,
                 total=data.memory_total,
                 active=data.memory_active,
                 available=data.memory_available,

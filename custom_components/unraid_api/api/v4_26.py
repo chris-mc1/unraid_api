@@ -27,7 +27,6 @@ class UnraidApiV426(UnraidApiV420):
     async def query_metrics_array(self) -> MetricsArray:
         response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
         return MetricsArray(
-            memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
             memory_available=response.metrics.memory.available,
@@ -88,7 +87,6 @@ METRICS_ARRAY_QUERY = """
 query MetricsArray {
   metrics {
     memory {
-      free
       total
       percentTotal
       active

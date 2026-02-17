@@ -46,7 +46,6 @@ class UnraidApiV420(UnraidApiClient):
     async def query_metrics_array(self) -> MetricsArray:
         response = await self.call_api(METRICS_ARRAY_QUERY, MetricsArrayQuery)
         return MetricsArray(
-            memory_free=response.metrics.memory.free,
             memory_total=response.metrics.memory.total,
             memory_active=response.metrics.memory.active,
             memory_available=response.metrics.memory.available,
@@ -142,7 +141,6 @@ class UnraidApiV420(UnraidApiClient):
             model = SystemMetricsMemorySubscription.model_validate(data)
             callback(
                 MemorySubscription(
-                    free=model.system_metrics_memory.free,
                     total=model.system_metrics_memory.total,
                     active=model.system_metrics_memory.active,
                     available=model.system_metrics_memory.available,
@@ -189,7 +187,6 @@ METRICS_ARRAY_QUERY = """
 query MetricsArray {
   metrics {
     memory {
-      free
       total
       percentTotal
       active
@@ -284,7 +281,6 @@ subscription CpuUsage {
 MEMORY_SUBSCRIPTION = """
 subscription Memory {
   systemMetricsMemory {
-    free
     total
     percentTotal
     active
@@ -364,7 +360,6 @@ class _Metrics(BaseModel):
 
 
 class MetricsMemory(BaseModel):  # noqa: D101
-    free: int
     total: int
     active: int
     percent_total: float = Field(alias="percentTotal")

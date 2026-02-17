@@ -97,7 +97,6 @@ async def test_subscribe_memory(
     await callback_mock.wait()
     callback_mock.assert_called_once_with(
         MemorySubscription(
-            free=248168448,
             total=16644698112,
             active=11771707392,
             available=4872990720,
@@ -110,7 +109,6 @@ async def test_subscribe_memory(
     await callback_mock.wait()
     callback_mock.assert_called_once_with(
         MemorySubscription(
-            free=242290688,
             total=16644698112,
             active=11964444672,
             available=4680253440,
