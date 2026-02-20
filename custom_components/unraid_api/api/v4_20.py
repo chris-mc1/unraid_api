@@ -31,9 +31,8 @@ if TYPE_CHECKING:
 
 def _make_container_obj(container: _DockerContainer) -> DockerContainer:
     label_unraid_webui = container.labels.get("net.unraid.docker.webui", "")
-    if label_unraid_webui == "":
-        webui = None
-    else:
+    webui = None
+    if label_unraid_webui != "":
         url = label_unraid_webui if "://" in label_unraid_webui else f"http://{label_unraid_webui}"
         try:
             webui = yarl.URL(url)
