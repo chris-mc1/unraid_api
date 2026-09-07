@@ -1,26 +1,17 @@
-.venv
+# artifacts
 __pycache__
+.pytest*
 *.egg-info
-*_cache
+*/build/*
+*/dist/*
 
-*.code-workspace
-
-/.storage
-/blueprints
-/deps
-/tts
-secrets.yaml
-.HA_VERSION
-automations.yaml
-home-assistant_v2.db
-home-assistant_v2.db-shm
-home-assistant_v2.db-wal
-home-assistant.log
-home-assistant.log.1
-home-assistant.log.fault
-scenes.yaml
-scripts.yaml
-configuration.yaml
+# misc
 .coverage
+.vscode/settings.json
+coverage.xml
+.ruff_cache
 devcontainer.env
-*.pyc
+
+# Home Assistant configuration
+config/*
+!config/configuration.yaml

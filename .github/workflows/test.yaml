@@ -11,14 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ha-version: ["homeassistant==2025.12.4", "homeassistant==2026.2.*"]
+        ha-version: ["homeassistant==2026.4.0", "homeassistant==2026.8.1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
-          python-version: "3.13.2"
-      - run: |
-          sudo pip install uv
-          sudo uv sync --group test
-      - run: |
-          sudo uv run --with ${{ matrix.ha-version }} pytest tests/
+          enable-cache: true
+      - run: uv run --with ${{ matrix.ha-version }} --with pytest-homeassistant-custom-component pytest

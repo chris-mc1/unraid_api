@@ -1,10 +1,10 @@
 [project]
-version = "1.5.1"
+version = "0.0.0"
 name = "unraid_api"
 authors = [{ name = "chris-mc1" }]
 description = "Unraid integration for Homeassistant"
 readme = "README.md"
-requires-python = ">=3.13.2"
+requires-python = ">=3.14.2"
 dependencies = ["aiohttp>=3.11.13", "awesomeversion>=25.5.0"]
 [project.urls]
 Homepage = "https://github.com/chris-mc1/unraid_api"
@@ -12,19 +12,17 @@ Issues = "https://github.com/chris-mc1/unraid_api/issues"
 
 [dependency-groups]
 dev = [
-    "colorlog",
-    "homeassistant==2026.2.1",
-    "pytest-homeassistant-custom-component",
-    "voluptuous-stubs==0.1.1",
-    "ruff==0.15.2",
+    { include-group = "lint" },
+    { include-group = "test" },
+    "colorlog==6.12.0",
+    "homeassistant==2026.8.1",
+    "prek==0.5.1",
 ]
-test = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-aiohttp>=1.0.5",
-    "coverage>=7.6.0",
-    "pytest-cov>=5.0.0",
-]
+lint = ["ruff==0.16.5"]
+test = ["pytest-homeassistant-custom-component"]
+
+[tool.uv]
+constraint-dependencies = ["cffi==2.0.0"]
 
 [tool.coverage.run]
 branch = true
@@ -33,5 +31,6 @@ branch = true
 exclude_lines = ["if TYPE_CHECKING:"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

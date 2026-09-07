@@ -118,7 +118,7 @@ class UnraidConfigFlow(ConfigFlow, domain=DOMAIN):
         except ClientSSLError:
             _LOGGER.exception("SSL error")
             self.errors = {"base": "ssl_error"}
-        except (ClientConnectionError, TimeoutError, ContentTypeError):
+        except ClientConnectionError, TimeoutError, ContentTypeError:
             _LOGGER.exception("Connection error")
             self.errors = {"base": "cannot_connect"}
         except GraphQLUnauthorizedError:

@@ -83,7 +83,7 @@ class UnraidDockerSwitch(UnraidBaseEntity, SwitchEntity):
             return self.entity_description.value_fn(
                 self.coordinator.data["docker_containers"][self.container_name]
             )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @error_handler

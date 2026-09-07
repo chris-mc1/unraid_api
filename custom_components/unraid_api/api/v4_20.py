@@ -36,7 +36,7 @@ def _make_container_obj(container: _DockerContainer) -> DockerContainer:
         url = label_unraid_webui if "://" in label_unraid_webui else f"http://{label_unraid_webui}"
         try:
             webui = yarl.URL(url)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             _LOGGER.debug("Can't build webui url: %s", label_unraid_webui)
 
     label_name = container.labels.get("io.home-assistant.unraid_api.name")

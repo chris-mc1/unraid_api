@@ -161,7 +161,7 @@ class UnraidApiClientBase:
             try:
                 if result["errors"][0]["extensions"]["code"] == "UNAUTHENTICATED":
                     raise GraphQLUnauthorizedError(result["errors"][0])
-            except (KeyError, IndexError):
+            except KeyError, IndexError:
                 pass
 
             if len(result["errors"]) > 1:

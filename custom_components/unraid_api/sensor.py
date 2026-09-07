@@ -465,7 +465,7 @@ class UnraidSensor(UnraidBaseEntity, SensorEntity):
     def native_value(self) -> StateType:
         try:
             return self.entity_description.value_fn(self.coordinator)
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @property
@@ -473,7 +473,7 @@ class UnraidSensor(UnraidBaseEntity, SensorEntity):
         try:
             if self.entity_description.extra_values_fn:
                 return self.entity_description.extra_values_fn(self.coordinator)
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
         return None
 
@@ -500,7 +500,7 @@ class UnraidDiskSensor(UnraidBaseEntity, SensorEntity):
     def native_value(self) -> StateType:
         try:
             return self.entity_description.value_fn(self.coordinator.data["disks"][self.disk_id])
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @property
@@ -510,7 +510,7 @@ class UnraidDiskSensor(UnraidBaseEntity, SensorEntity):
                 return self.entity_description.extra_values_fn(
                     self.coordinator.data["disks"][self.disk_id]
                 )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
         return None
 
@@ -537,7 +537,7 @@ class UnraidShareSensor(UnraidBaseEntity, SensorEntity):
             return self.entity_description.value_fn(
                 self.coordinator.data["shares"][self.share_name]
             )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @property
@@ -547,7 +547,7 @@ class UnraidShareSensor(UnraidBaseEntity, SensorEntity):
                 return self.entity_description.extra_values_fn(
                     self.coordinator.data["shares"][self.share_name]
                 )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
         return None
 
@@ -575,7 +575,7 @@ class UnraidUpsSensor(UnraidBaseEntity, SensorEntity):
             return self.entity_description.value_fn(
                 self.coordinator.data["ups_devices"][self.ups_id]
             )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @property
@@ -608,7 +608,7 @@ class UnraidDockerSensor(UnraidBaseEntity, SensorEntity):
             return self.entity_description.value_fn(
                 self.coordinator.data["docker_containers"][self.container_name]
             )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
 
     @property
@@ -618,7 +618,7 @@ class UnraidDockerSensor(UnraidBaseEntity, SensorEntity):
                 return self.entity_description.extra_values_fn(
                     self.coordinator.data["docker_containers"][self.container_name]
                 )
-        except (KeyError, AttributeError):
+        except KeyError, AttributeError:
             return None
         return None
 
