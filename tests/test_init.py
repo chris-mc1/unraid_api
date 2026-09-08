@@ -116,7 +116,10 @@ async def test_load_failure_2(
     await hass.config_entries.async_unload(entry.entry_id)
 
 
-async def test_migrate_entry(hass: HomeAssistant) -> None:
+async def test_migrate_entry(
+    hass: HomeAssistant,
+    mock_api_client: MagicMock,  # noqa: ARG001
+) -> None:
     """Test Config entry migration."""
     entry = MockConfigEntry(
         domain=DOMAIN,
