@@ -232,6 +232,7 @@ class UnraidApiClientBase:
         except Exception:
             _LOGGER.exception("Receive loop exception")
         finally:
+            _LOGGER.debug("Websocket disconnected")
             self._ws_connected = False
             await self._ws.close()
             self._ws = None

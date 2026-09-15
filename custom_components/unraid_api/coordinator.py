@@ -123,7 +123,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
             self._websocket_error_logged = False
 
     async def _async_update_data(self) -> UnraidServerData:
-        if self._websocket_error_logged and not self.api_client.websocket_connected:
+        if not self.api_client.websocket_connected:
             await self._connect_websocket()
         try:
             async with asyncio.TaskGroup() as tg:
@@ -134,7 +134,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
                     tg.create_task(self._update_shares())
                 if self.api_client.version >= AwesomeVersion("4.26.0"):
                     tg.create_task(self._update_ups())
-                if self.config_entry.options[CONF_DOCKER_MODE] not in DOCKER_MODE_OFF:
+                if self.config_entry.options[CONF_DOCKER_MODE] != DOCKER_MODE_OFF:
                     tg.create_task(self._update_docker())
 
         except* ClientConnectorSSLError as exc:
