@@ -11,7 +11,7 @@ from aiohttp import ClientConnectionError, ClientConnectorSSLError
 from awesomeversion import AwesomeVersion
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -280,11 +280,11 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidServerData]):
 
         for container_name in new_containers:
             container = containers[container_name]
-            device_info = DeviceInfo(
+            device_info = ChildDeviceInfo(
                 identifiers={(DOMAIN, f"{self.config_entry.entry_id}_docker_{container_name}")},
                 name=f"{self.config_entry.runtime_data.device_info['name']} {container_name}",
-                via_device=(DOMAIN, self.config_entry.entry_id),
                 entry_type=DeviceEntryType.SERVICE,
+                via_device_id=self.config_entry.runtime_data.device_id,
             )
             if container.label_unraid_webui:
                 device_info["configuration_url"] = container.label_unraid_webui

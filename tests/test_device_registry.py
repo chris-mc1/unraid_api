@@ -24,8 +24,11 @@ async def test_device_registry(
 ) -> None:
     """Test device registry."""
     config_entry = await setup_config_entry(hass)
-    device = device_registry.async_get_device({(DOMAIN, config_entry.entry_id)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, config_entry.entry_id), config_entry.entry_id
+    )
 
+    assert device
     assert device.name == "Test Server"
     assert device.sw_version == "7.0.1"
     assert device.configuration_url == "http://1.2.3.4"
@@ -39,9 +42,11 @@ async def test_ups_device_registry(
     """Test UPS device registry."""
     config_entry = await setup_config_entry(hass)
 
-    root_device = device_registry.async_get_device({(DOMAIN, config_entry.entry_id)})
-    ups_device = device_registry.async_get_device(
-        {(DOMAIN, f"{config_entry.entry_id}_Back-UPS ES 650G2")}
+    root_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, config_entry.entry_id), config_entry.entry_id
+    )
+    ups_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{config_entry.entry_id}_Back-UPS ES 650G2"), config_entry.entry_id
     )
 
     assert ups_device.name == "Back-UPS ES 650G2"
@@ -57,24 +62,26 @@ async def test_docker_device_registry(
     """Test Docker device registry."""
     config_entry = await setup_config_entry(hass)
 
-    root_device = device_registry.async_get_device({(DOMAIN, config_entry.entry_id)})
+    root_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, config_entry.entry_id), config_entry.entry_id
+    )
 
-    container = device_registry.async_get_device(
-        {(DOMAIN, f"{config_entry.entry_id}_docker_homeassistant")}
+    container = device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{config_entry.entry_id}_docker_homeassistant"), config_entry.entry_id
     )
     assert container.name == "Test Server homeassistant"
     assert container.sw_version == "2026.2.2"
     assert container.configuration_url == "http://homeassistant.unraid.lan"
     assert container.via_device_id == root_device.id
 
-    container = device_registry.async_get_device(
-        {(DOMAIN, f"{config_entry.entry_id}_docker_Postgres")}
+    container = device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{config_entry.entry_id}_docker_Postgres"), config_entry.entry_id
     )
     assert container.name == "Test Server Postgres"
     assert container.via_device_id == root_device.id
 
-    container = device_registry.async_get_device(
-        {(DOMAIN, f"{config_entry.entry_id}_docker_Grafana Public")}
+    container = device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{config_entry.entry_id}_docker_Grafana Public"), config_entry.entry_id
     )
     assert container.name == "Test Server Grafana Public"
     assert container.via_device_id == root_device.id
@@ -91,8 +98,8 @@ async def test_docker_device_registry_remove(
     config_entry = await setup_config_entry(hass)
     assert config_entry
 
-    assert device_registry.async_get_device(
-        {(DOMAIN, f"{config_entry.entry_id}_docker_homeassistant")}
+    assert device_registry.async_get_device_by_identifier(
+        (DOMAIN, f"{config_entry.entry_id}_docker_homeassistant"), config_entry.entry_id
     )
 
     api_client.state.docker.pop(0)

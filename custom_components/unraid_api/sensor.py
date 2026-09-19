@@ -427,7 +427,7 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{config_entry.entry_id}_{device.id}")},
             name=device.name,
             model=device.model,
-            via_device=(DOMAIN, config_entry.entry_id),
+            via_device_id=config_entry.runtime_data.device_id,
         )
         entities = [
             UnraidUpsSensor(description, config_entry, device.id, device_info)

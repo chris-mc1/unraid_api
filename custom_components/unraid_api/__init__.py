@@ -10,6 +10,7 @@ from aiohttp import ClientConnectionError, ClientSSLError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_VERIFY_SSL
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 
@@ -38,6 +39,7 @@ class UnraidData:
     coordinator: UnraidDataUpdateCoordinator
     device_info: DeviceInfo
     containers: dict[str, Container]
+    device_id: str
 
 
 type UnraidConfigEntry = ConfigEntry[UnraidData]
@@ -93,14 +95,21 @@ async def async_setup_entry(
             translation_placeholders={"min_version": exc.min_version, "version": exc.version},
         ) from exc
 
+    device_registry = dr.async_get(hass)
     device_info = DeviceInfo(
         identifiers={(DOMAIN, config_entry.entry_id)},
         sw_version=server_info.unraid_version,
         name=server_info.name,
         configuration_url=server_info.localurl,
     )
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id, **device_info
+    )
+
     coordinator = UnraidDataUpdateCoordinator(hass, config_entry, api_client)
-    config_entry.runtime_data = UnraidData(coordinator, device_info, containers={})
+    config_entry.runtime_data = UnraidData(
+        coordinator, device_info, containers={}, device_id=device_entry.id
+    )
     await coordinator.async_config_entry_first_refresh()
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
