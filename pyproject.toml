@@ -15,7 +15,7 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     "colorlog==6.12.0",
-    "homeassistant==2026.8.1",
+    "homeassistant==2026.9.1",
     "prek==0.5.1",
 ]
 lint = ["ruff==0.16.5"]

@@ -1,7 +1,7 @@
 {
     "name": "Unraid API",
     "render_readme": true,
-    "homeassistant": "2026.4.0",
+    "homeassistant": "2026.9.0",
     "zip_release": true,
     "filename": "unraid_api.zip"
 }
